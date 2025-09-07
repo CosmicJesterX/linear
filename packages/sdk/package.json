@@ -56,7 +56,7 @@
     "@graphql-inspector/core": "^2.4.0",
     "@graphql-tools/graphql-file-loader": "^6.2.7",
     "@graphql-tools/load": "^6.2.7",
-    "@graphql-tools/url-loader": "^6.8.1",
+    "@graphql-tools/url-loader": "^9.0.0",
     "@rollup/plugin-commonjs": "^17.1.0",
     "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^11.2.0",
