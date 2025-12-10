@@ -6308,6 +6308,7 @@ export class GuidanceRuleWebhookPayload {
 export class IdentityProvider extends Request {
   public constructor(request: LinearRequest, data: L.IdentityProviderFragment) {
     super(request);
+    this.allowNameChange = data.allowNameChange;
     this.archivedAt = parseDate(data.archivedAt) ?? undefined;
     this.createdAt = parseDate(data.createdAt) ?? new Date();
     this.defaultMigrated = data.defaultMigrated;
@@ -6325,6 +6326,8 @@ export class IdentityProvider extends Request {
     this.type = data.type;
   }
 
+  /** Whether users are allowed to change their name and display name even if SCIM is enabled. */
+  public allowNameChange: boolean;
   /** The time at which the entity was archived. Null if the entity has not been archived. */
   public archivedAt?: Date;
   /** The time at which the entity was created. */
@@ -11854,6 +11857,7 @@ export class Organization extends Request {
     this.scimEnabled = data.scimEnabled;
     this.securitySettings = data.securitySettings;
     this.trialEndsAt = parseDate(data.trialEndsAt) ?? undefined;
+    this.trialStartsAt = parseDate(data.trialStartsAt) ?? undefined;
     this.updatedAt = parseDate(data.updatedAt) ?? new Date();
     this.urlKey = data.urlKey;
     this.userCount = data.userCount;
@@ -11940,6 +11944,8 @@ export class Organization extends Request {
   public securitySettings: L.Scalars["JSONObject"];
   /** The time at which the trial will end. */
   public trialEndsAt?: Date;
+  /** The time at which the trial started. */
+  public trialStartsAt?: Date;
   /**
    * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
    *     been updated after creation.
@@ -15339,6 +15345,114 @@ export class ReactionWebhookPayload {
   public user?: UserChildWebhookPayload;
 }
 /**
+ * A generic payload return from entity archive mutations.
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.ReleaseArchivePayloadFragment response data
+ */
+export class ReleaseArchivePayload extends Request {
+  public constructor(request: LinearRequest, data: L.ReleaseArchivePayloadFragment) {
+    super(request);
+    this.lastSyncId = data.lastSyncId;
+    this.success = data.success;
+  }
+
+  /** The identifier of the last sync operation. */
+  public lastSyncId: number;
+  /** Whether the operation was successful. */
+  public success: boolean;
+}
+/**
+ * ReleasePayload model
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.ReleasePayloadFragment response data
+ */
+export class ReleasePayload extends Request {
+  public constructor(request: LinearRequest, data: L.ReleasePayloadFragment) {
+    super(request);
+    this.lastSyncId = data.lastSyncId;
+    this.success = data.success;
+  }
+
+  /** The identifier of the last sync operation. */
+  public lastSyncId: number;
+  /** Whether the operation was successful. */
+  public success: boolean;
+}
+/**
+ * A generic payload return from entity archive mutations.
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.ReleasePipelineArchivePayloadFragment response data
+ */
+export class ReleasePipelineArchivePayload extends Request {
+  public constructor(request: LinearRequest, data: L.ReleasePipelineArchivePayloadFragment) {
+    super(request);
+    this.lastSyncId = data.lastSyncId;
+    this.success = data.success;
+  }
+
+  /** The identifier of the last sync operation. */
+  public lastSyncId: number;
+  /** Whether the operation was successful. */
+  public success: boolean;
+}
+/**
+ * ReleasePipelinePayload model
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.ReleasePipelinePayloadFragment response data
+ */
+export class ReleasePipelinePayload extends Request {
+  public constructor(request: LinearRequest, data: L.ReleasePipelinePayloadFragment) {
+    super(request);
+    this.lastSyncId = data.lastSyncId;
+    this.success = data.success;
+  }
+
+  /** The identifier of the last sync operation. */
+  public lastSyncId: number;
+  /** Whether the operation was successful. */
+  public success: boolean;
+}
+/**
+ * A generic payload return from entity archive mutations.
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.ReleaseStageArchivePayloadFragment response data
+ */
+export class ReleaseStageArchivePayload extends Request {
+  public constructor(request: LinearRequest, data: L.ReleaseStageArchivePayloadFragment) {
+    super(request);
+    this.lastSyncId = data.lastSyncId;
+    this.success = data.success;
+  }
+
+  /** The identifier of the last sync operation. */
+  public lastSyncId: number;
+  /** Whether the operation was successful. */
+  public success: boolean;
+}
+/**
+ * ReleaseStagePayload model
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.ReleaseStagePayloadFragment response data
+ */
+export class ReleaseStagePayload extends Request {
+  public constructor(request: LinearRequest, data: L.ReleaseStagePayloadFragment) {
+    super(request);
+    this.lastSyncId = data.lastSyncId;
+    this.success = data.success;
+  }
+
+  /** The identifier of the last sync operation. */
+  public lastSyncId: number;
+  /** Whether the operation was successful. */
+  public success: boolean;
+}
+/**
  * RepositorySuggestion model
  *
  * @param request - function to call the graphql client
@@ -16148,7 +16262,7 @@ export class Team extends Request {
   public inheritIssueEstimation: boolean;
   /** Whether the team should inherit its workflow statuses from its parent. Only applies to sub-teams. */
   public inheritWorkflowStatuses: boolean;
-  /** Unique hash for the team to be used in invite URLs. */
+  /** [DEPRECATED] Unique hash for the team to be used in invite URLs. */
   public inviteHash: string;
   /** Number of issues in the team. */
   public issueCount: number;
@@ -28437,6 +28551,37 @@ export class DeleteProjectMutation extends Request {
     const data = response.projectDelete;
 
     return new ProjectArchivePayload(this._request, data);
+  }
+}
+
+/**
+ * A fetchable ProjectExternalSyncDisable Mutation
+ *
+ * @param request - function to call the graphql client
+ */
+export class ProjectExternalSyncDisableMutation extends Request {
+  public constructor(request: LinearRequest) {
+    super(request);
+  }
+
+  /**
+   * Call the ProjectExternalSyncDisable mutation and return a ProjectPayload
+   *
+   * @param projectId - required projectId to pass to projectExternalSyncDisable
+   * @param syncSource - required syncSource to pass to projectExternalSyncDisable
+   * @returns parsed response from ProjectExternalSyncDisableMutation
+   */
+  public async fetch(projectId: string, syncSource: L.ExternalSyncService): LinearFetch<ProjectPayload> {
+    const response = await this._request<
+      L.ProjectExternalSyncDisableMutation,
+      L.ProjectExternalSyncDisableMutationVariables
+    >(L.ProjectExternalSyncDisableDocument, {
+      projectId,
+      syncSource,
+    });
+    const data = response.projectExternalSyncDisable;
+
+    return new ProjectPayload(this._request, data);
   }
 }
 
@@ -41068,6 +41213,16 @@ export class LinearSdk extends Request {
     return new DeleteProjectMutation(this._request).fetch(id);
   }
   /**
+   * Disables external sync on a project.
+   *
+   * @param projectId - required projectId to pass to projectExternalSyncDisable
+   * @param syncSource - required syncSource to pass to projectExternalSyncDisable
+   * @returns ProjectPayload
+   */
+  public projectExternalSyncDisable(projectId: string, syncSource: L.ExternalSyncService): LinearFetch<ProjectPayload> {
+    return new ProjectExternalSyncDisableMutation(this._request).fetch(projectId, syncSource);
+  }
+  /**
    * Creates a new project label.
    *
    * @param input - required input to pass to createProjectLabel
@@ -41914,6 +42069,7 @@ export {
   PullRequestStatus,
   PushSubscriptionType,
   ReleaseChannel,
+  ReleaseStageType,
   SLADayCountType,
   SemanticSearchResultType,
   SendStrategy,

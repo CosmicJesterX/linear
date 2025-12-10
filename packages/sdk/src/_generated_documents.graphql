@@ -1099,6 +1099,33 @@ fragment ProjectUpdateArchivePayload on ProjectUpdateArchivePayload {
 }
 
 # A generic payload return from entity archive mutations.
+fragment ReleaseArchivePayload on ReleaseArchivePayload {
+  __typename
+  # The identifier of the last sync operation.
+  lastSyncId
+  # Whether the operation was successful.
+  success
+}
+
+# A generic payload return from entity archive mutations.
+fragment ReleasePipelineArchivePayload on ReleasePipelineArchivePayload {
+  __typename
+  # The identifier of the last sync operation.
+  lastSyncId
+  # Whether the operation was successful.
+  success
+}
+
+# A generic payload return from entity archive mutations.
+fragment ReleaseStageArchivePayload on ReleaseStageArchivePayload {
+  __typename
+  # The identifier of the last sync operation.
+  lastSyncId
+  # Whether the operation was successful.
+  success
+}
+
+# A generic payload return from entity archive mutations.
 fragment RoadmapArchivePayload on RoadmapArchivePayload {
   __typename
   # The archived/unarchived entity. Null if entity was deleted.
@@ -1187,6 +1214,18 @@ fragment ArchivePayload on ArchivePayload {
 
   ... on ProjectUpdateArchivePayload {
     ...ProjectUpdateArchivePayload
+  }
+
+  ... on ReleaseArchivePayload {
+    ...ReleaseArchivePayload
+  }
+
+  ... on ReleasePipelineArchivePayload {
+    ...ReleasePipelineArchivePayload
+  }
+
+  ... on ReleaseStageArchivePayload {
+    ...ReleaseStageArchivePayload
   }
 
   ... on RoadmapArchivePayload {
@@ -3077,6 +3116,8 @@ fragment IdentityProvider on IdentityProvider {
   scimEnabled
   # Whether the identity provider is the default identity provider migrated from organization level settings.
   defaultMigrated
+  # Whether users are allowed to change their name and display name even if SCIM is enabled.
+  allowNameChange
   # X.509 Signing Certificate in string form.
   ssoSigningCert
 }
@@ -3788,6 +3829,8 @@ fragment Organization on Organization {
   archivedAt
   # The time at which the entity was created.
   createdAt
+  # The time at which the trial started.
+  trialStartsAt
   # The time at which the trial will end.
   trialEndsAt
   # The unique identifier of the entity.
@@ -3976,8 +4019,6 @@ fragment Team on Team {
   triageIssueState {
     id
   }
-  # Unique hash for the team to be used in invite URLs.
-  inviteHash
   # What to use as a default estimate for unestimated issues.
   defaultIssueEstimate
   # Where to move issues when changing state.
@@ -4018,6 +4059,8 @@ fragment Team on Team {
   slackIssueStatuses
   # Whether triage mode is enabled for the team or not.
   triageEnabled
+  # [DEPRECATED] Unique hash for the team to be used in invite URLs.
+  inviteHash
   # [DEPRECATED] Whether issues without priority should be sorted first.
   issueOrderingNoPriorityFirst
   # [DEPRECATED] Whether to move issues to bottom of the column when changing state.
@@ -8884,6 +8927,30 @@ fragment ReactionPayload on ReactionPayload {
   reaction {
     ...Reaction
   }
+  success
+}
+
+fragment ReleasePayload on ReleasePayload {
+  __typename
+  # The identifier of the last sync operation.
+  lastSyncId
+  # Whether the operation was successful.
+  success
+}
+
+fragment ReleasePipelinePayload on ReleasePipelinePayload {
+  __typename
+  # The identifier of the last sync operation.
+  lastSyncId
+  # Whether the operation was successful.
+  success
+}
+
+fragment ReleaseStagePayload on ReleaseStagePayload {
+  __typename
+  # The identifier of the last sync operation.
+  lastSyncId
+  # Whether the operation was successful.
   success
 }
 
@@ -17527,6 +17594,17 @@ mutation deleteProject(
 ) {
   projectDelete(id: $id) {
     ...ProjectArchivePayload
+  }
+}
+# Disables external sync on a project.
+mutation projectExternalSyncDisable(
+  # The ID of the project to disable external sync for.
+  $projectId: String!
+  # The source of the external sync to disable.
+  $syncSource: ExternalSyncService!
+) {
+  projectExternalSyncDisable(projectId: $projectId, syncSource: $syncSource) {
+    ...ProjectPayload
   }
 }
 # Creates a new project label.

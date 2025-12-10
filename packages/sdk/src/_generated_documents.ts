@@ -5092,6 +5092,8 @@ export type IdentityProvider = Node & {
   __typename?: "IdentityProvider";
   /** [INTERNAL] SCIM admins group push settings. */
   adminsGroupPush?: Maybe<Scalars["JSONObject"]>;
+  /** Whether users are allowed to change their name and display name even if SCIM is enabled. */
+  allowNameChange: Scalars["Boolean"];
   /** The time at which the entity was archived. Null if the entity has not been archived. */
   archivedAt?: Maybe<Scalars["DateTime"]>;
   /** The time at which the entity was created. */
@@ -6663,6 +6665,8 @@ export type Issue = Node & {
   recurringIssueTemplate?: Maybe<Template>;
   /** Relations associated with this issue. */
   relations: IssueRelationConnection;
+  /** [Internal] Id of the releases associated with this issue. */
+  releaseIds: Array<Scalars["String"]>;
   /** The time at which the issue's SLA will breach. */
   slaBreachesAt?: Maybe<Scalars["DateTime"]>;
   /** The time at which the issue's SLA will enter high risk state. */
@@ -8314,6 +8318,8 @@ export type IssueSearchResult = Node & {
   recurringIssueTemplate?: Maybe<Template>;
   /** Relations associated with this issue. */
   relations: IssueRelationConnection;
+  /** [Internal] Id of the releases associated with this issue. */
+  releaseIds: Array<Scalars["String"]>;
   /** The time at which the issue's SLA will breach. */
   slaBreachesAt?: Maybe<Scalars["DateTime"]>;
   /** The time at which the issue's SLA will enter high risk state. */
@@ -9679,6 +9685,8 @@ export type Mutation = {
   projectCreate: ProjectPayload;
   /** Deletes (trashes) a project. */
   projectDelete: ProjectArchivePayload;
+  /** Disables external sync on a project. */
+  projectExternalSyncDisable: ProjectPayload;
   /** Creates a new project label. */
   projectLabelCreate: ProjectLabelPayload;
   /** Deletes a project label. */
@@ -9742,6 +9750,32 @@ export type Mutation = {
   reactionDelete: DeletePayload;
   /** Manually update Google Sheets data. */
   refreshGoogleSheetsData: IntegrationPayload;
+  /** [ALPHA] Archives a release. */
+  releaseArchive: ReleaseArchivePayload;
+  /** [ALPHA] Creates a new release. */
+  releaseCreate: ReleasePayload;
+  /** [ALPHA] Archives a release pipeline. */
+  releasePipelineArchive: ReleasePipelineArchivePayload;
+  /** [ALPHA] Creates a new release pipeline. */
+  releasePipelineCreate: ReleasePipelinePayload;
+  /** [ALPHA] Deletes a release pipeline. */
+  releasePipelineDelete: DeletePayload;
+  /** [ALPHA] Unarchives a release pipeline. */
+  releasePipelineUnarchive: ReleasePipelineArchivePayload;
+  /** [ALPHA] Updates a release pipeline. */
+  releasePipelineUpdate: ReleasePipelinePayload;
+  /** [ALPHA] Archives a release stage. */
+  releaseStageArchive: ReleaseStageArchivePayload;
+  /** [ALPHA] Creates a new release stage. */
+  releaseStageCreate: ReleaseStagePayload;
+  /** [ALPHA] Unarchives a release stage. */
+  releaseStageUnarchive: ReleaseStageArchivePayload;
+  /** [ALPHA] Updates a release stage. */
+  releaseStageUpdate: ReleaseStagePayload;
+  /** [ALPHA] Unarchives a release. */
+  releaseUnarchive: ReleaseArchivePayload;
+  /** [ALPHA] Updates a release. */
+  releaseUpdate: ReleasePayload;
   /** Re-send an organization invite. */
   resendOrganizationInvite: DeletePayload;
   /** Re-send an organization invite tied to an email address. */
@@ -10981,6 +11015,11 @@ export type MutationProjectDeleteArgs = {
   id: Scalars["String"];
 };
 
+export type MutationProjectExternalSyncDisableArgs = {
+  projectId: Scalars["String"];
+  syncSource: ExternalSyncService;
+};
+
 export type MutationProjectLabelCreateArgs = {
   input: ProjectLabelCreateInput;
 };
@@ -11109,6 +11148,61 @@ export type MutationReactionDeleteArgs = {
 export type MutationRefreshGoogleSheetsDataArgs = {
   id: Scalars["String"];
   type?: InputMaybe<Scalars["String"]>;
+};
+
+export type MutationReleaseArchiveArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationReleaseCreateArgs = {
+  input: ReleaseCreateInput;
+};
+
+export type MutationReleasePipelineArchiveArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationReleasePipelineCreateArgs = {
+  input: ReleasePipelineCreateInput;
+};
+
+export type MutationReleasePipelineDeleteArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationReleasePipelineUnarchiveArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationReleasePipelineUpdateArgs = {
+  id: Scalars["String"];
+  input: ReleasePipelineUpdateInput;
+};
+
+export type MutationReleaseStageArchiveArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationReleaseStageCreateArgs = {
+  input: ReleaseStageCreateInput;
+};
+
+export type MutationReleaseStageUnarchiveArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationReleaseStageUpdateArgs = {
+  id: Scalars["String"];
+  input: ReleaseStageUpdateInput;
+};
+
+export type MutationReleaseUnarchiveArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationReleaseUpdateArgs = {
+  id: Scalars["String"];
+  input: ReleaseUpdateInput;
 };
 
 export type MutationResendOrganizationInviteArgs = {
@@ -12769,6 +12863,8 @@ export type Organization = Node & {
   themeSettings?: Maybe<Scalars["JSONObject"]>;
   /** The time at which the trial will end. */
   trialEndsAt?: Maybe<Scalars["DateTime"]>;
+  /** The time at which the trial started. */
+  trialStartsAt?: Maybe<Scalars["DateTime"]>;
   /**
    * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
    *     been updated after creation.
@@ -14118,6 +14214,10 @@ export type ProjectCreateInput = {
   targetDateResolution?: InputMaybe<DateResolutionType>;
   /** The identifiers of the teams this project is associated with. */
   teamIds: Array<Scalars["String"]>;
+  /** The ID of the template to apply when creating the project. */
+  templateId?: InputMaybe<Scalars["String"]>;
+  /** When set to true, the default project template of the first team provided will be applied. If templateId is provided, this will be ignored. */
+  useDefaultTemplate?: InputMaybe<Scalars["Boolean"]>;
 };
 
 /** Project creation date sorting options. */
@@ -16068,6 +16168,16 @@ export type PullRequestNotification = Entity &
     user: User;
   };
 
+/** Input for referencing a pull request by repository and number. */
+export type PullRequestReferenceInput = {
+  /** The pull request number. */
+  number: Scalars["Float"];
+  /** The name of the repository. */
+  repositoryName: Scalars["String"];
+  /** The owner of the repository (e.g., organization or user name). */
+  repositoryOwner: Scalars["String"];
+};
+
 export enum PullRequestReviewTool {
   Graphite = "graphite",
   Source = "source",
@@ -16351,6 +16461,18 @@ export type Query = {
   pushSubscriptionTest: PushSubscriptionTestPayload;
   /** The status of the rate limiter. */
   rateLimitStatus: RateLimitPayload;
+  /** [ALPHA] One specific release. */
+  release: Release;
+  /** [ALPHA] One specific release pipeline. */
+  releasePipeline: ReleasePipeline;
+  /** [ALPHA] All release pipelines. */
+  releasePipelines: ReleasePipelineConnection;
+  /** [ALPHA] One specific release stage. */
+  releaseStage: ReleaseStage;
+  /** [ALPHA] All release stages. */
+  releaseStages: ReleaseStageConnection;
+  /** [ALPHA] All releases. */
+  releases: ReleaseConnection;
   /**
    * One specific roadmap.
    * @deprecated Roadmaps are deprecated, use initiatives instead.
@@ -17026,6 +17148,45 @@ export type QueryPushSubscriptionTestArgs = {
   targetMobile?: InputMaybe<Scalars["Boolean"]>;
 };
 
+export type QueryReleaseArgs = {
+  id: Scalars["String"];
+};
+
+export type QueryReleasePipelineArgs = {
+  id: Scalars["String"];
+};
+
+export type QueryReleasePipelinesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
+export type QueryReleaseStageArgs = {
+  id: Scalars["String"];
+};
+
+export type QueryReleaseStagesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
+export type QueryReleasesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
 export type QueryRoadmapArgs = {
   id: Scalars["String"];
 };
@@ -17385,6 +17546,43 @@ export type RelationExistsComparator = {
   neq?: InputMaybe<Scalars["Boolean"]>;
 };
 
+/** [Internal] A release. */
+export type Release = Node & {
+  __typename?: "Release";
+  /** The time at which the entity was archived. Null if the entity has not been archived. */
+  archivedAt?: Maybe<Scalars["DateTime"]>;
+  /** The commit SHA associated with this release. */
+  commitSha?: Maybe<Scalars["String"]>;
+  /** The time at which the entity was created. */
+  createdAt: Scalars["DateTime"];
+  /** The unique identifier of the entity. */
+  id: Scalars["ID"];
+  /** The name of the release. */
+  name: Scalars["String"];
+  /** The pipeline this release belongs to. */
+  pipeline: ReleasePipeline;
+  /** The current stage of the release. */
+  stage: ReleaseStage;
+  /**
+   * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+   *     been updated after creation.
+   */
+  updatedAt: Scalars["DateTime"];
+  /** The version of the release. */
+  version?: Maybe<Scalars["String"]>;
+};
+
+/** A generic payload return from entity archive mutations. */
+export type ReleaseArchivePayload = ArchivePayload & {
+  __typename?: "ReleaseArchivePayload";
+  /** The archived/unarchived entity. Null if entity was deleted. */
+  entity?: Maybe<Release>;
+  /** The identifier of the last sync operation. */
+  lastSyncId: Scalars["Float"];
+  /** Whether the operation was successful. */
+  success: Scalars["Boolean"];
+};
+
 /** Features release channel. */
 export enum ReleaseChannel {
   Beta = "beta",
@@ -17394,6 +17592,276 @@ export enum ReleaseChannel {
   PrivateBeta = "privateBeta",
   Public = "public",
 }
+
+export type ReleaseConnection = {
+  __typename?: "ReleaseConnection";
+  edges: Array<ReleaseEdge>;
+  nodes: Array<Release>;
+  pageInfo: PageInfo;
+};
+
+export type ReleaseCreateInput = {
+  /** The commit SHA associated with this release. */
+  commitSha?: InputMaybe<Scalars["String"]>;
+  /** Debug information for release creation diagnostics. */
+  debugSink?: InputMaybe<ReleaseDebugSinkInput>;
+  /** The identifier in UUID v4 format. If none is provided, the backend will generate one. */
+  id?: InputMaybe<Scalars["String"]>;
+  /** Issue identifiers (e.g. ENG-123) to associate with this release. */
+  issueIdentifiers?: InputMaybe<Array<Scalars["String"]>>;
+  /** The name of the release. */
+  name: Scalars["String"];
+  /** The identifier of the pipeline this release belongs to. */
+  pipelineId: Scalars["String"];
+  /** Pull request references to look up. Issues linked to found PRs will be associated with this release. */
+  pullRequestReferences?: InputMaybe<Array<PullRequestReferenceInput>>;
+  /** The current stage of the release. Defaults to the first 'planned' stage. */
+  stageId?: InputMaybe<Scalars["String"]>;
+  /** The version of the release. */
+  version?: InputMaybe<Scalars["String"]>;
+};
+
+/** Debug sink for release creation diagnostics. */
+export type ReleaseDebugSinkInput = {
+  /** List of commit SHAs that were inspected. */
+  inspectedShas: Array<Scalars["String"]>;
+  /** Map of issue identifiers to their source information. */
+  issues: Scalars["JSONObject"];
+  /** Pull request debug information. */
+  pullRequests: Array<Scalars["JSONObject"]>;
+};
+
+export type ReleaseEdge = {
+  __typename?: "ReleaseEdge";
+  /** Used in `before` and `after` args */
+  cursor: Scalars["String"];
+  node: Release;
+};
+
+export type ReleasePayload = {
+  __typename?: "ReleasePayload";
+  /** The identifier of the last sync operation. */
+  lastSyncId: Scalars["Float"];
+  /** The release that was created or updated. */
+  release: Release;
+  /** Whether the operation was successful. */
+  success: Scalars["Boolean"];
+};
+
+/** [Internal] A release pipeline. */
+export type ReleasePipeline = Node & {
+  __typename?: "ReleasePipeline";
+  /** The time at which the entity was archived. Null if the entity has not been archived. */
+  archivedAt?: Maybe<Scalars["DateTime"]>;
+  /** The time at which the entity was created. */
+  createdAt: Scalars["DateTime"];
+  /** The unique identifier of the entity. */
+  id: Scalars["ID"];
+  /** The name of the pipeline. */
+  name: Scalars["String"];
+  /** [ALPHA] Releases associated with this pipeline. */
+  releases: ReleaseConnection;
+  /** The pipeline's unique slug identifier. */
+  slugId: Scalars["String"];
+  /** [ALPHA] Stages associated with this pipeline. */
+  stages: ReleaseStageConnection;
+  /**
+   * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+   *     been updated after creation.
+   */
+  updatedAt: Scalars["DateTime"];
+};
+
+/** [Internal] A release pipeline. */
+export type ReleasePipelineReleasesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
+/** [Internal] A release pipeline. */
+export type ReleasePipelineStagesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
+/** A generic payload return from entity archive mutations. */
+export type ReleasePipelineArchivePayload = ArchivePayload & {
+  __typename?: "ReleasePipelineArchivePayload";
+  /** The archived/unarchived entity. Null if entity was deleted. */
+  entity?: Maybe<ReleasePipeline>;
+  /** The identifier of the last sync operation. */
+  lastSyncId: Scalars["Float"];
+  /** Whether the operation was successful. */
+  success: Scalars["Boolean"];
+};
+
+export type ReleasePipelineConnection = {
+  __typename?: "ReleasePipelineConnection";
+  edges: Array<ReleasePipelineEdge>;
+  nodes: Array<ReleasePipeline>;
+  pageInfo: PageInfo;
+};
+
+export type ReleasePipelineCreateInput = {
+  /** The identifier in UUID v4 format. If none is provided, the backend will generate one. */
+  id?: InputMaybe<Scalars["String"]>;
+  /** The name of the pipeline. */
+  name: Scalars["String"];
+  /** The pipeline's unique slug identifier. If not provided, it will be auto-generated. */
+  slugId?: InputMaybe<Scalars["String"]>;
+};
+
+export type ReleasePipelineEdge = {
+  __typename?: "ReleasePipelineEdge";
+  /** Used in `before` and `after` args */
+  cursor: Scalars["String"];
+  node: ReleasePipeline;
+};
+
+export type ReleasePipelinePayload = {
+  __typename?: "ReleasePipelinePayload";
+  /** The identifier of the last sync operation. */
+  lastSyncId: Scalars["Float"];
+  /** The release pipeline that was created or updated. */
+  releasePipeline: ReleasePipeline;
+  /** Whether the operation was successful. */
+  success: Scalars["Boolean"];
+};
+
+export type ReleasePipelineUpdateInput = {
+  /** The name of the pipeline. */
+  name?: InputMaybe<Scalars["String"]>;
+  /** The pipeline's unique slug identifier. */
+  slugId?: InputMaybe<Scalars["String"]>;
+};
+
+/** [Internal] A release stage. */
+export type ReleaseStage = Node & {
+  __typename?: "ReleaseStage";
+  /** The time at which the entity was archived. Null if the entity has not been archived. */
+  archivedAt?: Maybe<Scalars["DateTime"]>;
+  /** The UI color of the stage as a HEX string. */
+  color: Scalars["String"];
+  /** The time at which the entity was created. */
+  createdAt: Scalars["DateTime"];
+  /** The unique identifier of the entity. */
+  id: Scalars["ID"];
+  /** The name of the stage. */
+  name: Scalars["String"];
+  /** The pipeline this stage belongs to. */
+  pipeline: ReleasePipeline;
+  /** The position of the stage. */
+  position: Scalars["Float"];
+  /** [ALPHA] Releases associated with this stage. */
+  releases: ReleaseConnection;
+  /** The type of the stage. */
+  type: ReleaseStageType;
+  /**
+   * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+   *     been updated after creation.
+   */
+  updatedAt: Scalars["DateTime"];
+};
+
+/** [Internal] A release stage. */
+export type ReleaseStageReleasesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
+/** A generic payload return from entity archive mutations. */
+export type ReleaseStageArchivePayload = ArchivePayload & {
+  __typename?: "ReleaseStageArchivePayload";
+  /** The archived/unarchived entity. Null if entity was deleted. */
+  entity?: Maybe<ReleaseStage>;
+  /** The identifier of the last sync operation. */
+  lastSyncId: Scalars["Float"];
+  /** Whether the operation was successful. */
+  success: Scalars["Boolean"];
+};
+
+export type ReleaseStageConnection = {
+  __typename?: "ReleaseStageConnection";
+  edges: Array<ReleaseStageEdge>;
+  nodes: Array<ReleaseStage>;
+  pageInfo: PageInfo;
+};
+
+export type ReleaseStageCreateInput = {
+  /** The UI color of the stage as a HEX string. */
+  color: Scalars["String"];
+  /** The identifier in UUID v4 format. If none is provided, the backend will generate one. */
+  id?: InputMaybe<Scalars["String"]>;
+  /** The name of the stage. */
+  name: Scalars["String"];
+  /** The identifier of the pipeline this stage belongs to. */
+  pipelineId: Scalars["String"];
+  /** The position of the stage. */
+  position: Scalars["Float"];
+  /** The type of the stage. */
+  type: ReleaseStageType;
+};
+
+export type ReleaseStageEdge = {
+  __typename?: "ReleaseStageEdge";
+  /** Used in `before` and `after` args */
+  cursor: Scalars["String"];
+  node: ReleaseStage;
+};
+
+export type ReleaseStagePayload = {
+  __typename?: "ReleaseStagePayload";
+  /** The identifier of the last sync operation. */
+  lastSyncId: Scalars["Float"];
+  /** The release stage that was created or updated. */
+  releaseStage: ReleaseStage;
+  /** Whether the operation was successful. */
+  success: Scalars["Boolean"];
+};
+
+/** A type of release stage. */
+export enum ReleaseStageType {
+  Canceled = "canceled",
+  Completed = "completed",
+  Planned = "planned",
+  Started = "started",
+}
+
+export type ReleaseStageUpdateInput = {
+  /** The UI color of the stage as a HEX string. */
+  color?: InputMaybe<Scalars["String"]>;
+  /** The name of the stage. */
+  name?: InputMaybe<Scalars["String"]>;
+  /** The position of the stage. */
+  position?: InputMaybe<Scalars["Float"]>;
+  /** The type of the stage. */
+  type?: InputMaybe<ReleaseStageType>;
+};
+
+export type ReleaseUpdateInput = {
+  /** The commit SHA associated with this release. */
+  commitSha?: InputMaybe<Scalars["String"]>;
+  /** The name of the release. */
+  name?: InputMaybe<Scalars["String"]>;
+  /** The identifier of the pipeline this release belongs to. */
+  pipelineId?: InputMaybe<Scalars["String"]>;
+  /** The current stage of the release. */
+  stageId?: InputMaybe<Scalars["String"]>;
+  /** The version of the release. */
+  version?: InputMaybe<Scalars["String"]>;
+};
 
 export type RepositorySuggestion = {
   __typename?: "RepositorySuggestion";
@@ -18292,7 +18760,10 @@ export type Team = Node & {
   inheritWorkflowStatuses: Scalars["Boolean"];
   /** Settings for all integrations associated with that team. */
   integrationsSettings?: Maybe<IntegrationsSettings>;
-  /** Unique hash for the team to be used in invite URLs. */
+  /**
+   * [DEPRECATED] Unique hash for the team to be used in invite URLs.
+   * @deprecated Not used anymore, simply returning an empty string.
+   */
   inviteHash: Scalars["String"];
   /** Number of issues in the team. */
   issueCount: Scalars["Int"];
@@ -20131,6 +20602,7 @@ export enum ViewType {
   ProjectsBacklog = "projectsBacklog",
   ProjectsClosed = "projectsClosed",
   QuickView = "quickView",
+  Release = "release",
   Reviews = "reviews",
   Roadmap = "roadmap",
   RoadmapAll = "roadmapAll",
@@ -21495,6 +21967,21 @@ export type ProjectUpdateArchivePayloadFragment = { __typename: "ProjectUpdateAr
   "lastSyncId" | "success"
 > & { entity?: Maybe<{ __typename?: "ProjectUpdate" } & Pick<ProjectUpdate, "id">> };
 
+export type ReleaseArchivePayloadFragment = { __typename: "ReleaseArchivePayload" } & Pick<
+  ReleaseArchivePayload,
+  "lastSyncId" | "success"
+>;
+
+export type ReleasePipelineArchivePayloadFragment = { __typename: "ReleasePipelineArchivePayload" } & Pick<
+  ReleasePipelineArchivePayload,
+  "lastSyncId" | "success"
+>;
+
+export type ReleaseStageArchivePayloadFragment = { __typename: "ReleaseStageArchivePayload" } & Pick<
+  ReleaseStageArchivePayload,
+  "lastSyncId" | "success"
+>;
+
 export type RoadmapArchivePayloadFragment = { __typename: "RoadmapArchivePayload" } & Pick<
   RoadmapArchivePayload,
   "lastSyncId" | "success"
@@ -22000,6 +22487,21 @@ type ArchivePayload_ProjectUpdateArchivePayload_Fragment = { __typename: "Projec
   "lastSyncId" | "success"
 > & { entity?: Maybe<{ __typename?: "ProjectUpdate" } & Pick<ProjectUpdate, "id">> };
 
+type ArchivePayload_ReleaseArchivePayload_Fragment = { __typename: "ReleaseArchivePayload" } & Pick<
+  ReleaseArchivePayload,
+  "lastSyncId" | "success"
+>;
+
+type ArchivePayload_ReleasePipelineArchivePayload_Fragment = { __typename: "ReleasePipelineArchivePayload" } & Pick<
+  ReleasePipelineArchivePayload,
+  "lastSyncId" | "success"
+>;
+
+type ArchivePayload_ReleaseStageArchivePayload_Fragment = { __typename: "ReleaseStageArchivePayload" } & Pick<
+  ReleaseStageArchivePayload,
+  "lastSyncId" | "success"
+>;
+
 type ArchivePayload_RoadmapArchivePayload_Fragment = { __typename: "RoadmapArchivePayload" } & Pick<
   RoadmapArchivePayload,
   "lastSyncId" | "success"
@@ -22027,6 +22529,9 @@ export type ArchivePayloadFragment =
   | ArchivePayload_ProjectArchivePayload_Fragment
   | ArchivePayload_ProjectStatusArchivePayload_Fragment
   | ArchivePayload_ProjectUpdateArchivePayload_Fragment
+  | ArchivePayload_ReleaseArchivePayload_Fragment
+  | ArchivePayload_ReleasePipelineArchivePayload_Fragment
+  | ArchivePayload_ReleaseStageArchivePayload_Fragment
   | ArchivePayload_RoadmapArchivePayload_Fragment
   | ArchivePayload_TeamArchivePayload_Fragment
   | ArchivePayload_WorkflowStateArchivePayload_Fragment;
@@ -23506,6 +24011,7 @@ export type IdentityProviderFragment = { __typename: "IdentityProvider" } & Pick
   | "samlEnabled"
   | "scimEnabled"
   | "defaultMigrated"
+  | "allowNameChange"
   | "ssoSigningCert"
 >;
 
@@ -23992,6 +24498,7 @@ export type OrganizationFragment = { __typename: "Organization" } & Pick<
   | "deletionRequestedAt"
   | "archivedAt"
   | "createdAt"
+  | "trialStartsAt"
   | "trialEndsAt"
   | "id"
   | "hipaaComplianceEnabled"
@@ -24103,7 +24610,6 @@ export type TeamFragment = { __typename: "Team" } & Pick<
   | "createdAt"
   | "timezone"
   | "id"
-  | "inviteHash"
   | "defaultIssueEstimate"
   | "setIssueSortOrderOnStateChange"
   | "allMembersCanJoin"
@@ -24124,6 +24630,7 @@ export type TeamFragment = { __typename: "Team" } & Pick<
   | "slackNewIssue"
   | "slackIssueStatuses"
   | "triageEnabled"
+  | "inviteHash"
   | "issueOrderingNoPriorityFirst"
   | "issueSortOrderDefaultToBottom"
 > & {
@@ -24415,6 +24922,7 @@ export type OrganizationDomainFragment = { __typename: "OrganizationDomain" } & 
         | "samlEnabled"
         | "scimEnabled"
         | "defaultMigrated"
+        | "allowNameChange"
         | "ssoSigningCert"
       >
     >;
@@ -28624,6 +29132,12 @@ type Node_PushSubscription_Fragment = { __typename: "PushSubscription" } & Pick<
 
 type Node_Reaction_Fragment = { __typename: "Reaction" } & Pick<Reaction, "id">;
 
+type Node_Release_Fragment = { __typename: "Release" } & Pick<Release, "id">;
+
+type Node_ReleasePipeline_Fragment = { __typename: "ReleasePipeline" } & Pick<ReleasePipeline, "id">;
+
+type Node_ReleaseStage_Fragment = { __typename: "ReleaseStage" } & Pick<ReleaseStage, "id">;
+
 type Node_Roadmap_Fragment = { __typename: "Roadmap" } & Pick<Roadmap, "id">;
 
 type Node_RoadmapToProject_Fragment = { __typename: "RoadmapToProject" } & Pick<RoadmapToProject, "id">;
@@ -28739,6 +29253,9 @@ export type NodeFragment =
   | Node_PullRequestNotification_Fragment
   | Node_PushSubscription_Fragment
   | Node_Reaction_Fragment
+  | Node_Release_Fragment
+  | Node_ReleasePipeline_Fragment
+  | Node_ReleaseStage_Fragment
   | Node_Roadmap_Fragment
   | Node_RoadmapToProject_Fragment
   | Node_SemanticSearchResult_Fragment
@@ -30885,6 +31402,18 @@ export type ReactionPayloadFragment = { __typename: "ReactionPayload" } & Pick<
       };
   };
 
+export type ReleasePayloadFragment = { __typename: "ReleasePayload" } & Pick<ReleasePayload, "lastSyncId" | "success">;
+
+export type ReleasePipelinePayloadFragment = { __typename: "ReleasePipelinePayload" } & Pick<
+  ReleasePipelinePayload,
+  "lastSyncId" | "success"
+>;
+
+export type ReleaseStagePayloadFragment = { __typename: "ReleaseStagePayload" } & Pick<
+  ReleaseStagePayload,
+  "lastSyncId" | "success"
+>;
+
 export type RepositorySuggestionFragment = { __typename: "RepositorySuggestion" } & Pick<
   RepositorySuggestion,
   "confidence" | "hostname" | "repositoryFullName"
@@ -30994,7 +31523,6 @@ export type TeamConnectionFragment = { __typename: "TeamConnection" } & {
       | "createdAt"
       | "timezone"
       | "id"
-      | "inviteHash"
       | "defaultIssueEstimate"
       | "setIssueSortOrderOnStateChange"
       | "allMembersCanJoin"
@@ -31015,6 +31543,7 @@ export type TeamConnectionFragment = { __typename: "TeamConnection" } & {
       | "slackNewIssue"
       | "slackIssueStatuses"
       | "triageEnabled"
+      | "inviteHash"
       | "issueOrderingNoPriorityFirst"
       | "issueSortOrderDefaultToBottom"
     > & {
@@ -31377,7 +31906,6 @@ export type AdministrableTeamsQuery = { __typename?: "Query" } & {
         | "createdAt"
         | "timezone"
         | "id"
-        | "inviteHash"
         | "defaultIssueEstimate"
         | "setIssueSortOrderOnStateChange"
         | "allMembersCanJoin"
@@ -31398,6 +31926,7 @@ export type AdministrableTeamsQuery = { __typename?: "Query" } & {
         | "slackNewIssue"
         | "slackIssueStatuses"
         | "triageEnabled"
+        | "inviteHash"
         | "issueOrderingNoPriorityFirst"
         | "issueSortOrderDefaultToBottom"
       > & {
@@ -39946,6 +40475,7 @@ export type OrganizationQuery = { __typename?: "Query" } & {
     | "deletionRequestedAt"
     | "archivedAt"
     | "createdAt"
+    | "trialStartsAt"
     | "trialEndsAt"
     | "id"
     | "hipaaComplianceEnabled"
@@ -40187,7 +40717,6 @@ export type Organization_TeamsQuery = { __typename?: "Query" } & {
           | "createdAt"
           | "timezone"
           | "id"
-          | "inviteHash"
           | "defaultIssueEstimate"
           | "setIssueSortOrderOnStateChange"
           | "allMembersCanJoin"
@@ -40208,6 +40737,7 @@ export type Organization_TeamsQuery = { __typename?: "Query" } & {
           | "slackNewIssue"
           | "slackIssueStatuses"
           | "triageEnabled"
+          | "inviteHash"
           | "issueOrderingNoPriorityFirst"
           | "issueSortOrderDefaultToBottom"
         > & {
@@ -41323,7 +41853,6 @@ export type Project_TeamsQuery = { __typename?: "Query" } & {
           | "createdAt"
           | "timezone"
           | "id"
-          | "inviteHash"
           | "defaultIssueEstimate"
           | "setIssueSortOrderOnStateChange"
           | "allMembersCanJoin"
@@ -41344,6 +41873,7 @@ export type Project_TeamsQuery = { __typename?: "Query" } & {
           | "slackNewIssue"
           | "slackIssueStatuses"
           | "triageEnabled"
+          | "inviteHash"
           | "issueOrderingNoPriorityFirst"
           | "issueSortOrderDefaultToBottom"
         > & {
@@ -42851,7 +43381,6 @@ export type TeamQuery = { __typename?: "Query" } & {
     | "createdAt"
     | "timezone"
     | "id"
-    | "inviteHash"
     | "defaultIssueEstimate"
     | "setIssueSortOrderOnStateChange"
     | "allMembersCanJoin"
@@ -42872,6 +43401,7 @@ export type TeamQuery = { __typename?: "Query" } & {
     | "slackNewIssue"
     | "slackIssueStatuses"
     | "triageEnabled"
+    | "inviteHash"
     | "issueOrderingNoPriorityFirst"
     | "issueSortOrderDefaultToBottom"
   > & {
@@ -43521,7 +44051,6 @@ export type TeamsQuery = { __typename?: "Query" } & {
         | "createdAt"
         | "timezone"
         | "id"
-        | "inviteHash"
         | "defaultIssueEstimate"
         | "setIssueSortOrderOnStateChange"
         | "allMembersCanJoin"
@@ -43542,6 +44071,7 @@ export type TeamsQuery = { __typename?: "Query" } & {
         | "slackNewIssue"
         | "slackIssueStatuses"
         | "triageEnabled"
+        | "inviteHash"
         | "issueOrderingNoPriorityFirst"
         | "issueSortOrderDefaultToBottom"
       > & {
@@ -44272,7 +44802,6 @@ export type User_TeamsQuery = { __typename?: "Query" } & {
           | "createdAt"
           | "timezone"
           | "id"
-          | "inviteHash"
           | "defaultIssueEstimate"
           | "setIssueSortOrderOnStateChange"
           | "allMembersCanJoin"
@@ -44293,6 +44822,7 @@ export type User_TeamsQuery = { __typename?: "Query" } & {
           | "slackNewIssue"
           | "slackIssueStatuses"
           | "triageEnabled"
+          | "inviteHash"
           | "issueOrderingNoPriorityFirst"
           | "issueSortOrderDefaultToBottom"
         > & {
@@ -45717,7 +46247,6 @@ export type Viewer_TeamsQuery = { __typename?: "Query" } & {
           | "createdAt"
           | "timezone"
           | "id"
-          | "inviteHash"
           | "defaultIssueEstimate"
           | "setIssueSortOrderOnStateChange"
           | "allMembersCanJoin"
@@ -45738,6 +46267,7 @@ export type Viewer_TeamsQuery = { __typename?: "Query" } & {
           | "slackNewIssue"
           | "slackIssueStatuses"
           | "triageEnabled"
+          | "inviteHash"
           | "issueOrderingNoPriorityFirst"
           | "issueSortOrderDefaultToBottom"
         > & {
@@ -52686,6 +53216,17 @@ export type DeleteProjectMutation = { __typename?: "Mutation" } & {
     };
 };
 
+export type ProjectExternalSyncDisableMutationVariables = Exact<{
+  projectId: Scalars["String"];
+  syncSource: ExternalSyncService;
+}>;
+
+export type ProjectExternalSyncDisableMutation = { __typename?: "Mutation" } & {
+  projectExternalSyncDisable: { __typename: "ProjectPayload" } & Pick<ProjectPayload, "lastSyncId" | "success"> & {
+      project?: Maybe<{ __typename?: "Project" } & Pick<Project, "id">>;
+    };
+};
+
 export type CreateProjectLabelMutationVariables = Exact<{
   input: ProjectLabelCreateInput;
 }>;
@@ -55223,6 +55764,60 @@ export const ProjectUpdateArchivePayloadFragmentDoc = {
     },
   ],
 } as unknown as DocumentNode<ProjectUpdateArchivePayloadFragment, unknown>;
+export const ReleaseArchivePayloadFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ReleaseArchivePayload" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleaseArchivePayload" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "lastSyncId" } },
+          { kind: "Field", name: { kind: "Name", value: "success" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<ReleaseArchivePayloadFragment, unknown>;
+export const ReleasePipelineArchivePayloadFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ReleasePipelineArchivePayload" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleasePipelineArchivePayload" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "lastSyncId" } },
+          { kind: "Field", name: { kind: "Name", value: "success" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<ReleasePipelineArchivePayloadFragment, unknown>;
+export const ReleaseStageArchivePayloadFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ReleaseStageArchivePayload" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleaseStageArchivePayload" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "lastSyncId" } },
+          { kind: "Field", name: { kind: "Name", value: "success" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<ReleaseStageArchivePayloadFragment, unknown>;
 export const RoadmapArchivePayloadFragmentDoc = {
   kind: "Document",
   definitions: [
@@ -55400,6 +55995,30 @@ export const ArchivePayloadFragmentDoc = {
             selectionSet: {
               kind: "SelectionSet",
               selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "ProjectUpdateArchivePayload" } }],
+            },
+          },
+          {
+            kind: "InlineFragment",
+            typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleaseArchivePayload" } },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "ReleaseArchivePayload" } }],
+            },
+          },
+          {
+            kind: "InlineFragment",
+            typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleasePipelineArchivePayload" } },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "ReleasePipelineArchivePayload" } }],
+            },
+          },
+          {
+            kind: "InlineFragment",
+            typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleaseStageArchivePayload" } },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "ReleaseStageArchivePayload" } }],
             },
           },
           {
@@ -56209,6 +56828,7 @@ export const OrganizationFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "deletionRequestedAt" } },
           { kind: "Field", name: { kind: "Name", value: "archivedAt" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+          { kind: "Field", name: { kind: "Name", value: "trialStartsAt" } },
           { kind: "Field", name: { kind: "Name", value: "trialEndsAt" } },
           { kind: "Field", name: { kind: "Name", value: "id" } },
           { kind: "Field", name: { kind: "Name", value: "hipaaComplianceEnabled" } },
@@ -56369,6 +56989,7 @@ export const IdentityProviderFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "samlEnabled" } },
           { kind: "Field", name: { kind: "Name", value: "scimEnabled" } },
           { kind: "Field", name: { kind: "Name", value: "defaultMigrated" } },
+          { kind: "Field", name: { kind: "Name", value: "allowNameChange" } },
           { kind: "Field", name: { kind: "Name", value: "ssoSigningCert" } },
         ],
       },
@@ -67086,6 +67707,60 @@ export const ReactionPayloadFragmentDoc = {
     },
   ],
 } as unknown as DocumentNode<ReactionPayloadFragment, unknown>;
+export const ReleasePayloadFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ReleasePayload" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleasePayload" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "lastSyncId" } },
+          { kind: "Field", name: { kind: "Name", value: "success" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<ReleasePayloadFragment, unknown>;
+export const ReleasePipelinePayloadFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ReleasePipelinePayload" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleasePipelinePayload" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "lastSyncId" } },
+          { kind: "Field", name: { kind: "Name", value: "success" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<ReleasePipelinePayloadFragment, unknown>;
+export const ReleaseStagePayloadFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ReleaseStagePayload" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReleaseStagePayload" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "lastSyncId" } },
+          { kind: "Field", name: { kind: "Name", value: "success" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<ReleaseStagePayloadFragment, unknown>;
 export const RepositorySuggestionFragmentDoc = {
   kind: "Document",
   definitions: [
@@ -67540,7 +68215,6 @@ export const TeamFragmentDoc = {
               selections: [{ kind: "Field", name: { kind: "Name", value: "id" } }],
             },
           },
-          { kind: "Field", name: { kind: "Name", value: "inviteHash" } },
           { kind: "Field", name: { kind: "Name", value: "defaultIssueEstimate" } },
           { kind: "Field", name: { kind: "Name", value: "setIssueSortOrderOnStateChange" } },
           { kind: "Field", name: { kind: "Name", value: "allMembersCanJoin" } },
@@ -67561,6 +68235,7 @@ export const TeamFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "slackNewIssue" } },
           { kind: "Field", name: { kind: "Name", value: "slackIssueStatuses" } },
           { kind: "Field", name: { kind: "Name", value: "triageEnabled" } },
+          { kind: "Field", name: { kind: "Name", value: "inviteHash" } },
           { kind: "Field", name: { kind: "Name", value: "issueOrderingNoPriorityFirst" } },
           { kind: "Field", name: { kind: "Name", value: "issueSortOrderDefaultToBottom" } },
         ],
@@ -101957,6 +102632,57 @@ export const DeleteProjectDocument = {
     ...ProjectArchivePayloadFragmentDoc.definitions,
   ],
 } as unknown as DocumentNode<DeleteProjectMutation, DeleteProjectMutationVariables>;
+export const ProjectExternalSyncDisableDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "projectExternalSyncDisable" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "projectId" } },
+          type: { kind: "NonNullType", type: { kind: "NamedType", name: { kind: "Name", value: "String" } } },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "syncSource" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ExternalSyncService" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "projectExternalSyncDisable" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "projectId" },
+                value: { kind: "Variable", name: { kind: "Name", value: "projectId" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "syncSource" },
+                value: { kind: "Variable", name: { kind: "Name", value: "syncSource" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "ProjectPayload" } }],
+            },
+          },
+        ],
+      },
+    },
+    ...ProjectPayloadFragmentDoc.definitions,
+  ],
+} as unknown as DocumentNode<ProjectExternalSyncDisableMutation, ProjectExternalSyncDisableMutationVariables>;
 export const CreateProjectLabelDocument = {
   kind: "Document",
   definitions: [
