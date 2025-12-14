@@ -42069,6 +42069,7 @@ export {
   PullRequestStatus,
   PushSubscriptionType,
   ReleaseChannel,
+  ReleasePipelineType,
   ReleaseStageType,
   SLADayCountType,
   SemanticSearchResultType,
