@@ -308,14 +308,23 @@ export type AgentSession = Node & {
   dismissedBy?: Maybe<User>;
   /** The time the agent session ended. */
   endedAt?: Maybe<Scalars["DateTime"]>;
-  /** The URL of an external agent-hosted page associated with this session. */
+  /**
+   * The URL of an external agent-hosted page associated with this session.
+   * @deprecated Use externalUrls instead.
+   */
   externalLink?: Maybe<Scalars["String"]>;
+  /** URLs of external resources associated with this session. */
+  externalUrls: Scalars["JSON"];
   /** The unique identifier of the entity. */
   id: Scalars["ID"];
   /** The issue this agent session is associated with. */
   issue?: Maybe<Issue>;
   /** A dynamically updated list of the agent's execution strategy. */
   plan?: Maybe<Scalars["JSON"]>;
+  /** [Internal] A formatted prompt string containing relevant context for the agent session, including issue details, comments, and guidance. */
+  promptContext?: Maybe<Scalars["String"]>;
+  /** [Internal] Pull requests associated with this agent session. */
+  pullRequests: AgentSessionToPullRequestConnection;
   /** The comment that this agent session was spawned from, if from a different thread. */
   sourceComment?: Maybe<Comment>;
   /** Metadata about the external source that created this agent session. */
@@ -346,6 +355,16 @@ export type AgentSessionActivitiesArgs = {
   orderBy?: InputMaybe<PaginationOrderBy>;
 };
 
+/** A session for agent activities and state management. */
+export type AgentSessionPullRequestsArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
 export type AgentSessionConnection = {
   __typename?: "AgentSessionConnection";
   edges: Array<AgentSessionEdge>;
@@ -359,7 +378,7 @@ export type AgentSessionCreateInput = {
   /** The identifier in UUID v4 format. If none is provided, the backend will generate one. */
   id?: InputMaybe<Scalars["String"]>;
   /** The issue that this session will be associated with. */
-  issueId: Scalars["String"];
+  issueId?: InputMaybe<Scalars["String"]>;
 };
 
 export type AgentSessionCreateOnComment = {
@@ -367,11 +386,15 @@ export type AgentSessionCreateOnComment = {
   commentId: Scalars["String"];
   /** The URL of an external agent-hosted page associated with this session. */
   externalLink?: InputMaybe<Scalars["String"]>;
+  /** URLs of external resources associated with this session. */
+  externalUrls?: InputMaybe<Array<AgentSessionExternalUrlInput>>;
 };
 
 export type AgentSessionCreateOnIssue = {
   /** The URL of an external agent-hosted page associated with this session. */
   externalLink?: InputMaybe<Scalars["String"]>;
+  /** URLs of external resources associated with this session. */
+  externalUrls?: InputMaybe<Array<AgentSessionExternalUrlInput>>;
   /** The issue that this session will be associated with. */
   issueId: Scalars["String"];
 };
@@ -404,8 +427,22 @@ export type AgentSessionEventWebhookPayload = {
   organizationId: Scalars["String"];
   /** The previous comments in the thread before this agent was mentioned and the session was initiated, if any. Present only for `created` events where the session was initiated by mentioning the agent in a child comment of a thread. */
   previousComments?: Maybe<Array<CommentChildWebhookPayload>>;
+  /** A formatted prompt string containing the relevant context for the agent session, including issue details, comments, and guidance. Present only for `created` events. */
+  promptContext?: Maybe<Scalars["String"]>;
   /** The type of resource. */
   type: Scalars["String"];
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
+};
+
+/** Input for an external URL associated with an agent session. */
+export type AgentSessionExternalUrlInput = {
+  /** Optional label for the URL. */
+  label?: InputMaybe<Scalars["String"]>;
+  /** The URL of the external resource. */
+  url: Scalars["String"];
 };
 
 export type AgentSessionPayload = {
@@ -428,23 +465,69 @@ export enum AgentSessionStatus {
   Stale = "stale",
 }
 
+/** Join table between agent sessions and pull requests. */
+export type AgentSessionToPullRequest = Node & {
+  __typename?: "AgentSessionToPullRequest";
+  /** The agent session that the pull request is associated with. */
+  agentSession: AgentSession;
+  /** The time at which the entity was archived. Null if the entity has not been archived. */
+  archivedAt?: Maybe<Scalars["DateTime"]>;
+  /** The time at which the entity was created. */
+  createdAt: Scalars["DateTime"];
+  /** The unique identifier of the entity. */
+  id: Scalars["ID"];
+  /** The pull request that the agent session is associated with. */
+  pullRequest: PullRequest;
+  /**
+   * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+   *     been updated after creation.
+   */
+  updatedAt: Scalars["DateTime"];
+};
+
+export type AgentSessionToPullRequestConnection = {
+  __typename?: "AgentSessionToPullRequestConnection";
+  edges: Array<AgentSessionToPullRequestEdge>;
+  nodes: Array<AgentSessionToPullRequest>;
+  pageInfo: PageInfo;
+};
+
+export type AgentSessionToPullRequestEdge = {
+  __typename?: "AgentSessionToPullRequestEdge";
+  /** Used in `before` and `after` args */
+  cursor: Scalars["String"];
+  node: AgentSessionToPullRequest;
+};
+
 /** The type of an agent session. */
 export enum AgentSessionType {
   CommentThread = "commentThread",
 }
 
 export type AgentSessionUpdateExternalUrlInput = {
+  /** URLs of external resources to be added to this session. */
+  addedExternalUrls?: InputMaybe<Array<AgentSessionExternalUrlInput>>;
   /** The URL of an external agent-hosted page associated with this session. */
   externalLink?: InputMaybe<Scalars["String"]>;
+  /** URLs of external resources associated with this session. Replaces existing URLs. */
+  externalUrls?: InputMaybe<Array<AgentSessionExternalUrlInput>>;
+  /** URLs to be removed from this session. */
+  removedExternalUrls?: InputMaybe<Array<Scalars["String"]>>;
 };
 
 export type AgentSessionUpdateInput = {
+  /** URLs of external resources to be added to this session. Only updatable by the OAuth application that owns the session. */
+  addedExternalUrls?: InputMaybe<Array<AgentSessionExternalUrlInput>>;
   /** [Internal] The time the agent session was dismissed. Only updatable by internal clients. */
   dismissedAt?: InputMaybe<Scalars["DateTime"]>;
   /** The URL of an external agent-hosted page associated with this session. Only updatable by the OAuth application that owns the session. */
   externalLink?: InputMaybe<Scalars["String"]>;
+  /** URLs of external resources associated with this session. Replaces existing URLs. Only updatable by the OAuth application that owns the session. If supplied, addedExternalUrls and removedExternalUrls are ignored. */
+  externalUrls?: InputMaybe<Array<AgentSessionExternalUrlInput>>;
   /** A dynamically updated list of the agent's execution strategy. Only updatable by the OAuth application that owns the session. */
   plan?: InputMaybe<Scalars["JSONObject"]>;
+  /** URLs to be removed from this session. Only updatable by the OAuth application that owns the session. */
+  removedExternalUrls?: InputMaybe<Array<Scalars["String"]>>;
 };
 
 /** Payload for an agent session webhook. */
@@ -530,6 +613,10 @@ export type AppUserNotificationWebhookPayload = {
   organizationId: Scalars["String"];
   /** The type of resource. */
   type: Scalars["String"];
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** Payload for app user team access change webhook events. */
@@ -553,6 +640,10 @@ export type AppUserTeamAccessChangedWebhookPayload = {
   removedTeamIds: Array<Scalars["String"]>;
   /** The type of resource. */
   type: Scalars["String"];
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** Public information of the OAuth application. */
@@ -615,6 +706,14 @@ export type AsksChannelConnectPayload = {
   mapping: SlackChannelNameMapping;
   /** Whether the operation was successful. */
   success: Scalars["Boolean"];
+};
+
+export type AsksWebFormsAuthResponse = {
+  __typename?: "AsksWebFormsAuthResponse";
+  /** User email. */
+  email: Scalars["String"];
+  /** User display name. */
+  name: Scalars["String"];
 };
 
 /** Issue assignee sorting options. */
@@ -1096,6 +1195,10 @@ export type BaseWebhookPayload = {
   createdAt: Scalars["DateTime"];
   /** ID of the organization for which the webhook belongs to. */
   organizationId: Scalars["String"];
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** Comparator for booleans. */
@@ -1554,6 +1657,10 @@ export type CustomResourceWebhookPayload = {
   organizationId: Scalars["String"];
   /** The type of resource. */
   type: Scalars["String"];
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** A custom view that has been saved by a user. */
@@ -2756,10 +2863,10 @@ export type CustomerTierFilter = {
   createdAt?: InputMaybe<DateComparator>;
   /** Comparator for the customer tier description. */
   description?: InputMaybe<StringComparator>;
+  /** Comparator for the customer tier display name. */
+  displayName?: InputMaybe<StringComparator>;
   /** Comparator for the identifier. */
   id?: InputMaybe<IdComparator>;
-  /** Comparator for the customer tier name. */
-  name?: InputMaybe<StringComparator>;
   /** Compound filters, one of which needs to be matched by the customer tier. */
   or?: InputMaybe<Array<CustomerTierFilter>>;
   /** Comparator for the customer tier position. */
@@ -4248,6 +4355,10 @@ export type EntityWebhookPayload = {
   updatedFrom?: Maybe<Scalars["JSONObject"]>;
   /** URL for the entity. */
   url?: Maybe<Scalars["String"]>;
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** Comparator for estimates. */
@@ -4504,6 +4615,10 @@ export type Favorite = Node & {
   projectTeam?: Maybe<Team>;
   /** The favorited pull request. */
   pullRequest?: Maybe<PullRequest>;
+  /** [ALPHA] The favorited release. */
+  release?: Maybe<Release>;
+  /** [ALPHA] The favorited release pipeline. */
+  releasePipeline?: Maybe<ReleasePipeline>;
   /** The order of the item in the favorites list. */
   sortOrder: Scalars["Float"];
   /** [Internal] Favorite's title text (name of the favorite'd object or folder). */
@@ -4577,6 +4692,10 @@ export type FavoriteCreateInput = {
   projectTab?: InputMaybe<ProjectTab>;
   /** The identifier of the pull request to favorite. */
   pullRequestId?: InputMaybe<Scalars["String"]>;
+  /** [ALPHA] The identifier of the release to favorite. */
+  releaseId?: InputMaybe<Scalars["String"]>;
+  /** [ALPHA] The identifier of the release pipeline to favorite. */
+  releasePipelineId?: InputMaybe<Scalars["String"]>;
   /** The position of the item in the favorites list. */
   sortOrder?: InputMaybe<Scalars["Float"]>;
   /** The identifier of the user to favorite. */
@@ -6665,8 +6784,6 @@ export type Issue = Node & {
   recurringIssueTemplate?: Maybe<Template>;
   /** Relations associated with this issue. */
   relations: IssueRelationConnection;
-  /** [Internal] Id of the releases associated with this issue. */
-  releaseIds: Array<Scalars["String"]>;
   /** The time at which the issue's SLA will breach. */
   slaBreachesAt?: Maybe<Scalars["DateTime"]>;
   /** The time at which the issue's SLA will enter high risk state. */
@@ -7021,7 +7138,7 @@ export type IssueCollectionFilter = {
   /** [Internal] Comparator for filtering issues which have suggested teams. */
   hasSuggestedTeams?: InputMaybe<RelationExistsComparator>;
   /** Comparator for the identifier. */
-  id?: InputMaybe<IdComparator>;
+  id?: InputMaybe<IssueIdComparator>;
   /** Filters that issue labels must satisfy. */
   labels?: InputMaybe<IssueLabelCollectionFilter>;
   /** Filters that the last applied template must satisfy. */
@@ -7417,7 +7534,7 @@ export type IssueFilter = {
   /** [Internal] Comparator for filtering issues which have suggested teams. */
   hasSuggestedTeams?: InputMaybe<RelationExistsComparator>;
   /** Comparator for the identifier. */
-  id?: InputMaybe<IdComparator>;
+  id?: InputMaybe<IssueIdComparator>;
   /** Filters that issue labels must satisfy. */
   labels?: InputMaybe<IssueLabelCollectionFilter>;
   /** Filters that the last applied template must satisfy. */
@@ -7496,6 +7613,10 @@ export type IssueHistory = Node & {
   addedLabelIds?: Maybe<Array<Scalars["String"]>>;
   /** The labels that were added to the issue. */
   addedLabels?: Maybe<Array<IssueLabel>>;
+  /** [ALPHA] ID's of releases that the issue was added to. */
+  addedToReleaseIds?: Maybe<Array<Scalars["String"]>>;
+  /** The releases that the issue was added to. */
+  addedToReleases?: Maybe<Array<Release>>;
   /** Whether the issue is archived at the time of this history entry. */
   archived?: Maybe<Scalars["Boolean"]>;
   /** The time at which the entity was archived. Null if the entity has not been archived. */
@@ -7560,6 +7681,10 @@ export type IssueHistory = Node & {
   issueImport?: Maybe<IssueImport>;
   /** Changed issue relationships. */
   relationChanges?: Maybe<Array<IssueRelationHistoryPayload>>;
+  /** [ALPHA] ID's of releases that the issue was removed from. */
+  removedFromReleaseIds?: Maybe<Array<Scalars["String"]>>;
+  /** The releases that the issue was removed from. */
+  removedFromReleases?: Maybe<Array<Release>>;
   /** ID's of labels that were removed. */
   removedLabelIds?: Maybe<Array<Scalars["String"]>>;
   /** The labels that were removed from the issue. */
@@ -7629,6 +7754,18 @@ export type IssueHistoryEdge = {
   /** Used in `before` and `after` args */
   cursor: Scalars["String"];
   node: IssueHistory;
+};
+
+/** Comparator for issue identifiers. */
+export type IssueIdComparator = {
+  /** Equals constraint. */
+  eq?: InputMaybe<Scalars["ID"]>;
+  /** In-array constraint. */
+  in?: InputMaybe<Array<Scalars["ID"]>>;
+  /** Not-equals constraint. */
+  neq?: InputMaybe<Scalars["ID"]>;
+  /** Not-in-array constraint. */
+  nin?: InputMaybe<Array<Scalars["ID"]>>;
 };
 
 /** An import job for data from an external service. */
@@ -8318,8 +8455,6 @@ export type IssueSearchResult = Node & {
   recurringIssueTemplate?: Maybe<Template>;
   /** Relations associated with this issue. */
   relations: IssueRelationConnection;
-  /** [Internal] Id of the releases associated with this issue. */
-  releaseIds: Array<Scalars["String"]>;
   /** The time at which the issue's SLA will breach. */
   slaBreachesAt?: Maybe<Scalars["DateTime"]>;
   /** The time at which the issue's SLA will enter high risk state. */
@@ -8538,6 +8673,10 @@ export type IssueSlaWebhookPayload = {
   type: Scalars["String"];
   /** URL for the issue. */
   url?: Maybe<Scalars["String"]>;
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** Issue sorting options. */
@@ -8787,6 +8926,61 @@ export type IssueTitleSuggestionFromCustomerRequestPayload = {
   logId?: Maybe<Scalars["String"]>;
   /** The suggested issue title. */
   title: Scalars["String"];
+};
+
+/** [Internal] Join table between issues and releases. */
+export type IssueToRelease = Node & {
+  __typename?: "IssueToRelease";
+  /** The time at which the entity was archived. Null if the entity has not been archived. */
+  archivedAt?: Maybe<Scalars["DateTime"]>;
+  /** The time at which the entity was created. */
+  createdAt: Scalars["DateTime"];
+  /** The unique identifier of the entity. */
+  id: Scalars["ID"];
+  /** The issue associated with the release. */
+  issue: Issue;
+  /** The release associated with the issue. */
+  release: Release;
+  /**
+   * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+   *     been updated after creation.
+   */
+  updatedAt: Scalars["DateTime"];
+};
+
+export type IssueToReleaseConnection = {
+  __typename?: "IssueToReleaseConnection";
+  edges: Array<IssueToReleaseEdge>;
+  nodes: Array<IssueToRelease>;
+  pageInfo: PageInfo;
+};
+
+/** [ALPHA] The properties of the issueToRelease to create. */
+export type IssueToReleaseCreateInput = {
+  /** The identifier in UUID v4 format. If none is provided, the backend will generate one. */
+  id?: InputMaybe<Scalars["String"]>;
+  /** The identifier of the issue */
+  issueId: Scalars["String"];
+  /** The identifier of the release */
+  releaseId: Scalars["String"];
+};
+
+export type IssueToReleaseEdge = {
+  __typename?: "IssueToReleaseEdge";
+  /** Used in `before` and `after` args */
+  cursor: Scalars["String"];
+  node: IssueToRelease;
+};
+
+/** [ALPHA] The result of an issueToRelease mutation. */
+export type IssueToReleasePayload = {
+  __typename?: "IssueToReleasePayload";
+  /** The issueToRelease that was created or updated. */
+  issueToRelease: IssueToRelease;
+  /** The identifier of the last sync operation. */
+  lastSyncId: Scalars["Float"];
+  /** Whether the operation was successful. */
+  success: Scalars["Boolean"];
 };
 
 /** Payload for an issue unassignment notification. */
@@ -9223,6 +9417,8 @@ export type Mutation = {
   agentSessionUpdateExternalUrl: AgentSessionPayload;
   /** Creates an integration api key for Airbyte to connect with Linear. */
   airbyteIntegrationConnect: IntegrationPayload;
+  /** Authenticate a user to the Asks web forms app. */
+  asksWebFormsAuth: AsksWebFormsAuthResponse;
   /** Creates a new attachment, or updates existing if the same `url` and `issueId` is used. */
   attachmentCreate: AttachmentPayload;
   /** Deletes an issue attachment. */
@@ -9592,6 +9788,12 @@ export type Mutation = {
   issueRemoveLabel: IssuePayload;
   /** Subscribes a user to an issue. */
   issueSubscribe: IssuePayload;
+  /** [ALPHA] Creates a new issueToRelease join, adding an issue to a release. */
+  issueToReleaseCreate: IssueToReleasePayload;
+  /** [ALPHA] Deletes an issueToRelease by its identifier, removing an issue from a release. */
+  issueToReleaseDelete: DeletePayload;
+  /** [ALPHA] Deletes an issueToRelease by issue and release identifiers */
+  issueToReleaseDeleteByIssueAndRelease: DeletePayload;
   /** Unarchives an issue. */
   issueUnarchive: IssueArchivePayload;
   /** Unsubscribes a user from an issue. */
@@ -9947,6 +10149,10 @@ export type MutationAgentSessionUpdateExternalUrlArgs = {
 
 export type MutationAirbyteIntegrationConnectArgs = {
   input: AirbyteConfigurationInput;
+};
+
+export type MutationAsksWebFormsAuthArgs = {
+  token: Scalars["String"];
 };
 
 export type MutationAttachmentCreateArgs = {
@@ -10840,6 +11046,19 @@ export type MutationIssueSubscribeArgs = {
   id: Scalars["String"];
   userEmail?: InputMaybe<Scalars["String"]>;
   userId?: InputMaybe<Scalars["String"]>;
+};
+
+export type MutationIssueToReleaseCreateArgs = {
+  input: IssueToReleaseCreateInput;
+};
+
+export type MutationIssueToReleaseDeleteArgs = {
+  id: Scalars["String"];
+};
+
+export type MutationIssueToReleaseDeleteByIssueAndReleaseArgs = {
+  issueId: Scalars["String"];
+  releaseId: Scalars["String"];
 };
 
 export type MutationIssueUnarchiveArgs = {
@@ -12172,7 +12391,7 @@ export type NullableIssueFilter = {
   /** [Internal] Comparator for filtering issues which have suggested teams. */
   hasSuggestedTeams?: InputMaybe<RelationExistsComparator>;
   /** Comparator for the identifier. */
-  id?: InputMaybe<IdComparator>;
+  id?: InputMaybe<IssueIdComparator>;
   /** Filters that issue labels must satisfy. */
   labels?: InputMaybe<IssueLabelCollectionFilter>;
   /** Filters that the last applied template must satisfy. */
@@ -12564,6 +12783,10 @@ export type OAuthAppWebhookPayload = {
   organizationId: Scalars["String"];
   /** The type of resource. */
   type: Scalars["String"];
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** Payload for OAuth authorization webhook events. */
@@ -12587,6 +12810,10 @@ export type OAuthAuthorizationWebhookPayload = {
   user: UserChildWebhookPayload;
   /** ID of the user that the authorization belongs to. */
   userId: Scalars["String"];
+  /** The ID of the webhook that sent this event. */
+  webhookId: Scalars["String"];
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  webhookTimestamp: Scalars["Float"];
 };
 
 /** The different requests statuses possible for an OAuth client approval request. */
@@ -13290,6 +13517,8 @@ export type OrganizationUpdateInput = {
   gitLinkbackMessagesEnabled?: InputMaybe<Scalars["Boolean"]>;
   /** Whether the Git integration linkback messages should be sent for public repositories. */
   gitPublicLinkbackMessagesEnabled?: InputMaybe<Scalars["Boolean"]>;
+  /** Whether HIPAA compliance is enabled for organization. */
+  hipaaComplianceEnabled?: InputMaybe<Scalars["Boolean"]>;
   /** [ALPHA] The n-weekly frequency at which to prompt for initiative updates. */
   initiativeUpdateReminderFrequencyInWeeks?: InputMaybe<Scalars["Float"]>;
   /** [ALPHA] The day at which initiative updates are sent. */
@@ -16401,6 +16630,10 @@ export type Query = {
   issueSearch: IssueConnection;
   /** Suggests issue title based on a customer request. */
   issueTitleSuggestionFromCustomerRequest: IssueTitleSuggestionFromCustomerRequestPayload;
+  /** [ALPHA] One specific issueToRelease. */
+  issueToRelease: IssueToRelease;
+  /** [ALPHA] Returns a list of issue to release entities. */
+  issueToReleases: IssueToReleaseConnection;
   /** Find issue based on the VCS branch name. */
   issueVcsBranchSearch?: Maybe<Issue>;
   /** All issues. */
@@ -16981,6 +17214,19 @@ export type QueryIssueTitleSuggestionFromCustomerRequestArgs = {
   request: Scalars["String"];
 };
 
+export type QueryIssueToReleaseArgs = {
+  id: Scalars["String"];
+};
+
+export type QueryIssueToReleasesArgs = {
+  after?: InputMaybe<Scalars["String"]>;
+  before?: InputMaybe<Scalars["String"]>;
+  first?: InputMaybe<Scalars["Int"]>;
+  includeArchived?: InputMaybe<Scalars["Boolean"]>;
+  last?: InputMaybe<Scalars["Int"]>;
+  orderBy?: InputMaybe<PaginationOrderBy>;
+};
+
 export type QueryIssueVcsBranchSearchArgs = {
   branchName: Scalars["String"];
 };
@@ -17551,8 +17797,12 @@ export type Release = Node & {
   __typename?: "Release";
   /** The time at which the entity was archived. Null if the entity has not been archived. */
   archivedAt?: Maybe<Scalars["DateTime"]>;
+  /** The time at which the release was canceled. */
+  canceledAt?: Maybe<Scalars["DateTime"]>;
   /** The commit SHA associated with this release. */
   commitSha?: Maybe<Scalars["String"]>;
+  /** The time at which the release was completed. */
+  completedAt?: Maybe<Scalars["DateTime"]>;
   /** The time at which the entity was created. */
   createdAt: Scalars["DateTime"];
   /** The unique identifier of the entity. */
@@ -17561,8 +17811,16 @@ export type Release = Node & {
   name: Scalars["String"];
   /** The pipeline this release belongs to. */
   pipeline: ReleasePipeline;
+  /** The release's unique URL slug. */
+  slugId: Scalars["String"];
   /** The current stage of the release. */
   stage: ReleaseStage;
+  /** The estimated start date of the release. */
+  startDate?: Maybe<Scalars["TimelessDate"]>;
+  /** The time at which the release was started. */
+  startedAt?: Maybe<Scalars["DateTime"]>;
+  /** The estimated completion date of the release. */
+  targetDate?: Maybe<Scalars["TimelessDate"]>;
   /**
    * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
    *     been updated after creation.
@@ -17615,8 +17873,12 @@ export type ReleaseCreateInput = {
   pipelineId: Scalars["String"];
   /** Pull request references to look up. Issues linked to found PRs will be associated with this release. */
   pullRequestReferences?: InputMaybe<Array<PullRequestReferenceInput>>;
-  /** The current stage of the release. Defaults to the first 'planned' stage. */
+  /** The current stage of the release. Defaults to the first 'completed' stage. */
   stageId?: InputMaybe<Scalars["String"]>;
+  /** The estimated start date of the release. */
+  startDate?: InputMaybe<Scalars["TimelessDate"]>;
+  /** The estimated completion date of the release. */
+  targetDate?: InputMaybe<Scalars["TimelessDate"]>;
   /** The version of the release. */
   version?: InputMaybe<Scalars["String"]>;
 };
@@ -17665,6 +17927,8 @@ export type ReleasePipeline = Node & {
   slugId: Scalars["String"];
   /** [ALPHA] Stages associated with this pipeline. */
   stages: ReleaseStageConnection;
+  /** The type of the pipeline. */
+  type: ReleasePipelineType;
   /**
    * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
    *     been updated after creation.
@@ -17717,6 +17981,8 @@ export type ReleasePipelineCreateInput = {
   name: Scalars["String"];
   /** The pipeline's unique slug identifier. If not provided, it will be auto-generated. */
   slugId?: InputMaybe<Scalars["String"]>;
+  /** The type of the pipeline. */
+  type?: InputMaybe<ReleasePipelineType>;
 };
 
 export type ReleasePipelineEdge = {
@@ -17736,11 +18002,19 @@ export type ReleasePipelinePayload = {
   success: Scalars["Boolean"];
 };
 
+/** A type of release pipeline. */
+export enum ReleasePipelineType {
+  Continuous = "continuous",
+  Scheduled = "scheduled",
+}
+
 export type ReleasePipelineUpdateInput = {
   /** The name of the pipeline. */
   name?: InputMaybe<Scalars["String"]>;
   /** The pipeline's unique slug identifier. */
   slugId?: InputMaybe<Scalars["String"]>;
+  /** The type of the pipeline. */
+  type?: InputMaybe<ReleasePipelineType>;
 };
 
 /** [Internal] A release stage. */
@@ -17859,6 +18133,10 @@ export type ReleaseUpdateInput = {
   pipelineId?: InputMaybe<Scalars["String"]>;
   /** The current stage of the release. */
   stageId?: InputMaybe<Scalars["String"]>;
+  /** The estimated start date of the release. */
+  startDate?: InputMaybe<Scalars["TimelessDate"]>;
+  /** The estimated completion date of the release. */
+  targetDate?: InputMaybe<Scalars["TimelessDate"]>;
   /** The version of the release. */
   version?: InputMaybe<Scalars["String"]>;
 };
@@ -19396,6 +19674,8 @@ export type TeamUpdateInput = {
   productIntelligenceScope?: InputMaybe<ProductIntelligenceScope>;
   /** Whether an issue needs to have a priority set before leaving triage. */
   requirePriorityToLeaveTriage?: InputMaybe<Scalars["Boolean"]>;
+  /** [Internal] When the team was retired. */
+  retiredAt?: InputMaybe<Scalars["DateTime"]>;
   /** Whether the team is managed by SCIM integration. Mutation restricted to workspace admins or owners and only unsetting is allowed! */
   scimManaged?: InputMaybe<Scalars["Boolean"]>;
   /** The security settings for the team. */
@@ -20553,6 +20833,8 @@ export type ViewPreferencesValues = {
   __typename?: "ViewPreferencesValues";
   /** The issue grouping. */
   issueGrouping?: Maybe<Scalars["String"]>;
+  /** The issue sub grouping. */
+  issueSubGrouping?: Maybe<Scalars["String"]>;
   /** Whether to show completed issues. */
   showCompletedIssues?: Maybe<Scalars["String"]>;
   /** The issue ordering. */
@@ -21196,7 +21478,7 @@ export type CustomViewFragment = { __typename: "CustomView" } & Pick<
     viewPreferencesValues?: Maybe<
       { __typename: "ViewPreferencesValues" } & Pick<
         ViewPreferencesValues,
-        "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+        "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
       >
     >;
     userViewPreferences?: Maybe<
@@ -21206,7 +21488,7 @@ export type CustomViewFragment = { __typename: "CustomView" } & Pick<
       > & {
           preferences: { __typename: "ViewPreferencesValues" } & Pick<
             ViewPreferencesValues,
-            "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+            "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
           >;
         }
     >;
@@ -21217,7 +21499,7 @@ export type CustomViewFragment = { __typename: "CustomView" } & Pick<
       > & {
           preferences: { __typename: "ViewPreferencesValues" } & Pick<
             ViewPreferencesValues,
-            "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+            "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
           >;
         }
     >;
@@ -23476,6 +23758,7 @@ export type AgentSessionFragment = { __typename: "AgentSession" } & Pick<
   | "dismissedAt"
   | "type"
   | "id"
+  | "externalUrls"
 > & {
     appUser: { __typename?: "User" } & Pick<User, "id">;
     sourceComment?: Maybe<{ __typename?: "Comment" } & Pick<Comment, "id">>;
@@ -24707,7 +24990,7 @@ export type AuthenticationSessionResponseFragment = { __typename: "Authenticatio
 
 export type BaseWebhookPayloadFragment = { __typename: "BaseWebhookPayload" } & Pick<
   BaseWebhookPayload,
-  "organizationId" | "createdAt"
+  "organizationId" | "webhookId" | "createdAt" | "webhookTimestamp"
 >;
 
 export type CommentChildWebhookPayloadFragment = { __typename: "CommentChildWebhookPayload" } & Pick<
@@ -25056,6 +25339,11 @@ export type IssueRelationHistoryPayloadFragment = { __typename: "IssueRelationHi
   "identifier" | "type"
 >;
 
+export type AgentSessionToPullRequestFragment = { __typename: "AgentSessionToPullRequest" } & Pick<
+  AgentSessionToPullRequest,
+  "updatedAt" | "archivedAt" | "createdAt" | "id"
+> & { agentSession: { __typename?: "AgentSession" } & Pick<AgentSession, "id"> };
+
 export type InitiativeToProjectFragment = { __typename: "InitiativeToProject" } & Pick<
   InitiativeToProject,
   "updatedAt" | "sortOrder" | "archivedAt" | "createdAt" | "id"
@@ -25292,12 +25580,20 @@ export type OrganizationOriginWebhookPayloadFragment = { __typename: "Organizati
 
 export type OAuthAppWebhookPayloadFragment = { __typename: "OAuthAppWebhookPayload" } & Pick<
   OAuthAppWebhookPayload,
-  "organizationId" | "oauthClientId" | "createdAt" | "action" | "type"
+  "organizationId" | "oauthClientId" | "webhookId" | "createdAt" | "action" | "type" | "webhookTimestamp"
 >;
 
 export type OAuthAuthorizationWebhookPayloadFragment = { __typename: "OAuthAuthorizationWebhookPayload" } & Pick<
   OAuthAuthorizationWebhookPayload,
-  "oauthClientId" | "organizationId" | "userId" | "activeTokensForUser" | "createdAt" | "action" | "type"
+  | "oauthClientId"
+  | "organizationId"
+  | "userId"
+  | "webhookId"
+  | "activeTokensForUser"
+  | "createdAt"
+  | "action"
+  | "type"
+  | "webhookTimestamp"
 > & {
     oauthClient: { __typename: "OauthClientChildWebhookPayload" } & Pick<OauthClientChildWebhookPayload, "id" | "name">;
     user: { __typename: "UserChildWebhookPayload" } & Pick<
@@ -25724,7 +26020,15 @@ export type UserWebhookPayloadFragment = { __typename: "UserWebhookPayload" } & 
 
 export type AgentSessionEventWebhookPayloadFragment = { __typename: "AgentSessionEventWebhookPayload" } & Pick<
   AgentSessionEventWebhookPayload,
-  "oauthClientId" | "appUserId" | "organizationId" | "createdAt" | "action" | "type"
+  | "promptContext"
+  | "oauthClientId"
+  | "appUserId"
+  | "organizationId"
+  | "webhookId"
+  | "createdAt"
+  | "action"
+  | "type"
+  | "webhookTimestamp"
 > & {
     guidance?: Maybe<Array<{ __typename: "GuidanceRuleWebhookPayload" } & Pick<GuidanceRuleWebhookPayload, "body">>>;
     agentActivity?: Maybe<
@@ -26285,7 +26589,7 @@ export type IssueWebhookPayloadFragment = { __typename: "IssueWebhookPayload" } 
 
 export type AppUserNotificationWebhookPayloadFragment = { __typename: "AppUserNotificationWebhookPayload" } & Pick<
   AppUserNotificationWebhookPayload,
-  "oauthClientId" | "appUserId" | "organizationId" | "createdAt" | "action" | "type"
+  "oauthClientId" | "appUserId" | "organizationId" | "webhookId" | "createdAt" | "action" | "type" | "webhookTimestamp"
 >;
 
 export type AppUserTeamAccessChangedWebhookPayloadFragment = {
@@ -26297,25 +26601,27 @@ export type AppUserTeamAccessChangedWebhookPayloadFragment = {
   | "organizationId"
   | "addedTeamIds"
   | "removedTeamIds"
+  | "webhookId"
   | "createdAt"
   | "action"
   | "type"
+  | "webhookTimestamp"
   | "canAccessAllPublicTeams"
 >;
 
 export type CustomResourceWebhookPayloadFragment = { __typename: "CustomResourceWebhookPayload" } & Pick<
   CustomResourceWebhookPayload,
-  "organizationId" | "createdAt" | "action" | "type"
+  "organizationId" | "webhookId" | "createdAt" | "action" | "type" | "webhookTimestamp"
 >;
 
 export type EntityWebhookPayloadFragment = { __typename: "EntityWebhookPayload" } & Pick<
   EntityWebhookPayload,
-  "organizationId" | "updatedFrom" | "createdAt" | "action" | "type" | "url"
+  "organizationId" | "updatedFrom" | "webhookId" | "createdAt" | "action" | "type" | "url" | "webhookTimestamp"
 >;
 
 export type IssueSlaWebhookPayloadFragment = { __typename: "IssueSlaWebhookPayload" } & Pick<
   IssueSlaWebhookPayload,
-  "organizationId" | "createdAt" | "action" | "type" | "url"
+  "organizationId" | "webhookId" | "createdAt" | "action" | "type" | "url" | "webhookTimestamp"
 > & {
     issueData: { __typename: "IssueWebhookPayload" } & Pick<
       IssueWebhookPayload,
@@ -26740,7 +27046,7 @@ export type ViewPreferencesFragment = { __typename: "ViewPreferences" } & Pick<
 > & {
     preferences: { __typename: "ViewPreferencesValues" } & Pick<
       ViewPreferencesValues,
-      "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+      "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
     >;
   };
 
@@ -26830,6 +27136,7 @@ export type AgentSessionConnectionFragment = { __typename: "AgentSessionConnecti
       | "dismissedAt"
       | "type"
       | "id"
+      | "externalUrls"
     > & {
         appUser: { __typename?: "User" } & Pick<User, "id">;
         sourceComment?: Maybe<{ __typename?: "Comment" } & Pick<Comment, "id">>;
@@ -26849,6 +27156,19 @@ export type AgentSessionPayloadFragment = { __typename: "AgentSessionPayload" } 
   AgentSessionPayload,
   "lastSyncId" | "success"
 > & { agentSession: { __typename?: "AgentSession" } & Pick<AgentSession, "id"> };
+
+export type AgentSessionToPullRequestConnectionFragment = { __typename: "AgentSessionToPullRequestConnection" } & {
+  nodes: Array<
+    { __typename: "AgentSessionToPullRequest" } & Pick<
+      AgentSessionToPullRequest,
+      "updatedAt" | "archivedAt" | "createdAt" | "id"
+    > & { agentSession: { __typename?: "AgentSession" } & Pick<AgentSession, "id"> }
+  >;
+  pageInfo: { __typename: "PageInfo" } & Pick<
+    PageInfo,
+    "startCursor" | "endCursor" | "hasPreviousPage" | "hasNextPage"
+  >;
+};
 
 export type AsksChannelConnectPayloadFragment = { __typename: "AsksChannelConnectPayload" } & Pick<
   AsksChannelConnectPayload,
@@ -26872,6 +27192,11 @@ export type AsksChannelConnectPayloadFragment = { __typename: "AsksChannelConnec
       | "autoCreateOnEmoji"
     > & { teams: Array<{ __typename: "SlackAsksTeamSettings" } & Pick<SlackAsksTeamSettings, "id" | "hasDefaultAsk">> };
   };
+
+export type AsksWebFormsAuthResponseFragment = { __typename: "AsksWebFormsAuthResponse" } & Pick<
+  AsksWebFormsAuthResponse,
+  "name" | "email"
+>;
 
 export type AttachmentConnectionFragment = { __typename: "AttachmentConnection" } & {
   nodes: Array<
@@ -27222,7 +27547,7 @@ export type CustomViewConnectionFragment = { __typename: "CustomViewConnection" 
         viewPreferencesValues?: Maybe<
           { __typename: "ViewPreferencesValues" } & Pick<
             ViewPreferencesValues,
-            "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+            "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
           >
         >;
         userViewPreferences?: Maybe<
@@ -27232,7 +27557,7 @@ export type CustomViewConnectionFragment = { __typename: "CustomViewConnection" 
           > & {
               preferences: { __typename: "ViewPreferencesValues" } & Pick<
                 ViewPreferencesValues,
-                "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+                "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
               >;
             }
         >;
@@ -27243,7 +27568,7 @@ export type CustomViewConnectionFragment = { __typename: "CustomViewConnection" 
           > & {
               preferences: { __typename: "ViewPreferencesValues" } & Pick<
                 ViewPreferencesValues,
-                "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+                "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
               >;
             }
         >;
@@ -28951,6 +29276,11 @@ type Node_AgentActivity_Fragment = { __typename: "AgentActivity" } & Pick<AgentA
 
 type Node_AgentSession_Fragment = { __typename: "AgentSession" } & Pick<AgentSession, "id">;
 
+type Node_AgentSessionToPullRequest_Fragment = { __typename: "AgentSessionToPullRequest" } & Pick<
+  AgentSessionToPullRequest,
+  "id"
+>;
+
 type Node_AiPromptRules_Fragment = { __typename: "AiPromptRules" } & Pick<AiPromptRules, "id">;
 
 type Node_Attachment_Fragment = { __typename: "Attachment" } & Pick<Attachment, "id">;
@@ -29072,6 +29402,8 @@ type Node_IssueSearchResult_Fragment = { __typename: "IssueSearchResult" } & Pic
 
 type Node_IssueSuggestion_Fragment = { __typename: "IssueSuggestion" } & Pick<IssueSuggestion, "id">;
 
+type Node_IssueToRelease_Fragment = { __typename: "IssueToRelease" } & Pick<IssueToRelease, "id">;
+
 type Node_LabelNotificationSubscription_Fragment = { __typename: "LabelNotificationSubscription" } & Pick<
   LabelNotificationSubscription,
   "id"
@@ -29179,6 +29511,7 @@ type Node_WorkflowState_Fragment = { __typename: "WorkflowState" } & Pick<Workfl
 export type NodeFragment =
   | Node_AgentActivity_Fragment
   | Node_AgentSession_Fragment
+  | Node_AgentSessionToPullRequest_Fragment
   | Node_AiPromptRules_Fragment
   | Node_Attachment_Fragment
   | Node_AuditEntry_Fragment
@@ -29229,6 +29562,7 @@ export type NodeFragment =
   | Node_IssueRelation_Fragment
   | Node_IssueSearchResult_Fragment
   | Node_IssueSuggestion_Fragment
+  | Node_IssueToRelease_Fragment
   | Node_LabelNotificationSubscription_Fragment
   | Node_OauthClientApproval_Fragment
   | Node_OauthClientApprovalNotification_Fragment
@@ -31802,14 +32136,14 @@ export type ViewPreferencesPayloadFragment = { __typename: "ViewPreferencesPaylo
     > & {
         preferences: { __typename: "ViewPreferencesValues" } & Pick<
           ViewPreferencesValues,
-          "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+          "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
         >;
       };
   };
 
 export type ViewPreferencesValuesFragment = { __typename: "ViewPreferencesValues" } & Pick<
   ViewPreferencesValues,
-  "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+  "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
 >;
 
 export type WebhookConnectionFragment = { __typename: "WebhookConnection" } & {
@@ -32040,6 +32374,7 @@ export type AgentSessionQuery = { __typename?: "Query" } & {
     | "dismissedAt"
     | "type"
     | "id"
+    | "externalUrls"
   > & {
       appUser: { __typename?: "User" } & Pick<User, "id">;
       sourceComment?: Maybe<{ __typename?: "Comment" } & Pick<Comment, "id">>;
@@ -32122,6 +32457,7 @@ export type AgentSessionsQuery = { __typename?: "Query" } & {
         | "dismissedAt"
         | "type"
         | "id"
+        | "externalUrls"
       > & {
           appUser: { __typename?: "User" } & Pick<User, "id">;
           sourceComment?: Maybe<{ __typename?: "Comment" } & Pick<Comment, "id">>;
@@ -34038,7 +34374,7 @@ export type CustomViewQuery = { __typename?: "Query" } & {
       viewPreferencesValues?: Maybe<
         { __typename: "ViewPreferencesValues" } & Pick<
           ViewPreferencesValues,
-          "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+          "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
         >
       >;
       userViewPreferences?: Maybe<
@@ -34048,7 +34384,7 @@ export type CustomViewQuery = { __typename?: "Query" } & {
         > & {
             preferences: { __typename: "ViewPreferencesValues" } & Pick<
               ViewPreferencesValues,
-              "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+              "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
             >;
           }
       >;
@@ -34059,7 +34395,7 @@ export type CustomViewQuery = { __typename?: "Query" } & {
         > & {
             preferences: { __typename: "ViewPreferencesValues" } & Pick<
               ViewPreferencesValues,
-              "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+              "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
             >;
           }
       >;
@@ -34282,7 +34618,7 @@ export type CustomView_OrganizationViewPreferencesQuery = { __typename?: "Query"
       > & {
           preferences: { __typename: "ViewPreferencesValues" } & Pick<
             ViewPreferencesValues,
-            "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+            "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
           >;
         }
     >;
@@ -34299,7 +34635,7 @@ export type CustomView_OrganizationViewPreferences_PreferencesQuery = { __typena
       { __typename?: "ViewPreferences" } & {
         preferences: { __typename: "ViewPreferencesValues" } & Pick<
           ViewPreferencesValues,
-          "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+          "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
         >;
       }
     >;
@@ -34419,7 +34755,7 @@ export type CustomView_UserViewPreferencesQuery = { __typename?: "Query" } & {
       > & {
           preferences: { __typename: "ViewPreferencesValues" } & Pick<
             ViewPreferencesValues,
-            "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+            "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
           >;
         }
     >;
@@ -34436,7 +34772,7 @@ export type CustomView_UserViewPreferences_PreferencesQuery = { __typename?: "Qu
       { __typename?: "ViewPreferences" } & {
         preferences: { __typename: "ViewPreferencesValues" } & Pick<
           ViewPreferencesValues,
-          "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+          "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
         >;
       }
     >;
@@ -34452,7 +34788,7 @@ export type CustomView_ViewPreferencesValuesQuery = { __typename?: "Query" } & {
     viewPreferencesValues?: Maybe<
       { __typename: "ViewPreferencesValues" } & Pick<
         ViewPreferencesValues,
-        "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+        "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
       >
     >;
   };
@@ -34505,7 +34841,7 @@ export type CustomViewsQuery = { __typename?: "Query" } & {
           viewPreferencesValues?: Maybe<
             { __typename: "ViewPreferencesValues" } & Pick<
               ViewPreferencesValues,
-              "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+              "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
             >
           >;
           userViewPreferences?: Maybe<
@@ -34515,7 +34851,7 @@ export type CustomViewsQuery = { __typename?: "Query" } & {
             > & {
                 preferences: { __typename: "ViewPreferencesValues" } & Pick<
                   ViewPreferencesValues,
-                  "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+                  "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
                 >;
               }
           >;
@@ -34526,7 +34862,7 @@ export type CustomViewsQuery = { __typename?: "Query" } & {
             > & {
                 preferences: { __typename: "ViewPreferencesValues" } & Pick<
                   ViewPreferencesValues,
-                  "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+                  "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
                 >;
               }
           >;
@@ -46583,6 +46919,14 @@ export type AirbyteIntegrationConnectMutation = { __typename?: "Mutation" } & {
   > & { integration?: Maybe<{ __typename?: "Integration" } & Pick<Integration, "id">> };
 };
 
+export type AsksWebFormsAuthMutationVariables = Exact<{
+  token: Scalars["String"];
+}>;
+
+export type AsksWebFormsAuthMutation = { __typename?: "Mutation" } & {
+  asksWebFormsAuth: { __typename: "AsksWebFormsAuthResponse" } & Pick<AsksWebFormsAuthResponse, "name" | "email">;
+};
+
 export type CreateAttachmentMutationVariables = Exact<{
   input: AttachmentCreateInput;
 }>;
@@ -54093,7 +54437,7 @@ export type CreateViewPreferencesMutation = { __typename?: "Mutation" } & {
       > & {
           preferences: { __typename: "ViewPreferencesValues" } & Pick<
             ViewPreferencesValues,
-            "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+            "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
           >;
         };
     };
@@ -54123,7 +54467,7 @@ export type UpdateViewPreferencesMutation = { __typename?: "Mutation" } & {
       > & {
           preferences: { __typename: "ViewPreferencesValues" } & Pick<
             ViewPreferencesValues,
-            "issueGrouping" | "viewOrdering" | "showCompletedIssues"
+            "issueGrouping" | "viewOrdering" | "issueSubGrouping" | "showCompletedIssues"
           >;
         };
     };
@@ -56899,7 +57243,9 @@ export const BaseWebhookPayloadFragmentDoc = {
         selections: [
           { kind: "Field", name: { kind: "Name", value: "__typename" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -57421,9 +57767,11 @@ export const OAuthAppWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "__typename" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
           { kind: "Field", name: { kind: "Name", value: "oauthClientId" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -57477,10 +57825,12 @@ export const OAuthAuthorizationWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "oauthClientId" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
           { kind: "Field", name: { kind: "Name", value: "userId" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           { kind: "Field", name: { kind: "Name", value: "activeTokensForUser" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -58424,6 +58774,7 @@ export const AgentSessionEventWebhookPayloadFragmentDoc = {
         kind: "SelectionSet",
         selections: [
           { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "promptContext" } },
           {
             kind: "Field",
             name: { kind: "Name", value: "guidance" },
@@ -58435,6 +58786,7 @@ export const AgentSessionEventWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "oauthClientId" } },
           { kind: "Field", name: { kind: "Name", value: "appUserId" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           {
             kind: "Field",
             name: { kind: "Name", value: "agentActivity" },
@@ -58462,6 +58814,7 @@ export const AgentSessionEventWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -59047,9 +59400,11 @@ export const AppUserNotificationWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "oauthClientId" } },
           { kind: "Field", name: { kind: "Name", value: "appUserId" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -59071,9 +59426,11 @@ export const AppUserTeamAccessChangedWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
           { kind: "Field", name: { kind: "Name", value: "addedTeamIds" } },
           { kind: "Field", name: { kind: "Name", value: "removedTeamIds" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
           { kind: "Field", name: { kind: "Name", value: "canAccessAllPublicTeams" } },
         ],
       },
@@ -59092,9 +59449,11 @@ export const CustomResourceWebhookPayloadFragmentDoc = {
         selections: [
           { kind: "Field", name: { kind: "Name", value: "__typename" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -59113,10 +59472,12 @@ export const EntityWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "__typename" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
           { kind: "Field", name: { kind: "Name", value: "updatedFrom" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           { kind: "Field", name: { kind: "Name", value: "createdAt" } },
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
           { kind: "Field", name: { kind: "Name", value: "url" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -59351,6 +59712,7 @@ export const IssueSlaWebhookPayloadFragmentDoc = {
         selections: [
           { kind: "Field", name: { kind: "Name", value: "__typename" } },
           { kind: "Field", name: { kind: "Name", value: "organizationId" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookId" } },
           {
             kind: "Field",
             name: { kind: "Name", value: "issueData" },
@@ -59363,6 +59725,7 @@ export const IssueSlaWebhookPayloadFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "action" } },
           { kind: "Field", name: { kind: "Name", value: "type" } },
           { kind: "Field", name: { kind: "Name", value: "url" } },
+          { kind: "Field", name: { kind: "Name", value: "webhookTimestamp" } },
         ],
       },
     },
@@ -60519,6 +60882,7 @@ export const AgentSessionFragmentDoc = {
               selections: [{ kind: "Field", name: { kind: "Name", value: "id" } }],
             },
           },
+          { kind: "Field", name: { kind: "Name", value: "externalUrls" } },
         ],
       },
     },
@@ -60582,6 +60946,66 @@ export const AgentSessionPayloadFragmentDoc = {
     },
   ],
 } as unknown as DocumentNode<AgentSessionPayloadFragment, unknown>;
+export const AgentSessionToPullRequestFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "AgentSessionToPullRequest" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "AgentSessionToPullRequest" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "agentSession" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "Field", name: { kind: "Name", value: "id" } }],
+            },
+          },
+          { kind: "Field", name: { kind: "Name", value: "updatedAt" } },
+          { kind: "Field", name: { kind: "Name", value: "archivedAt" } },
+          { kind: "Field", name: { kind: "Name", value: "createdAt" } },
+          { kind: "Field", name: { kind: "Name", value: "id" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<AgentSessionToPullRequestFragment, unknown>;
+export const AgentSessionToPullRequestConnectionFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "AgentSessionToPullRequestConnection" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "AgentSessionToPullRequestConnection" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "nodes" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "AgentSessionToPullRequest" } }],
+            },
+          },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "pageInfo" },
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "PageInfo" } }],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<AgentSessionToPullRequestConnectionFragment, unknown>;
 export const SlackAsksTeamSettingsFragmentDoc = {
   kind: "Document",
   definitions: [
@@ -60672,6 +61096,24 @@ export const AsksChannelConnectPayloadFragmentDoc = {
     },
   ],
 } as unknown as DocumentNode<AsksChannelConnectPayloadFragment, unknown>;
+export const AsksWebFormsAuthResponseFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "AsksWebFormsAuthResponse" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "AsksWebFormsAuthResponse" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "name" } },
+          { kind: "Field", name: { kind: "Name", value: "email" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<AsksWebFormsAuthResponseFragment, unknown>;
 export const AttachmentFragmentDoc = {
   kind: "Document",
   definitions: [
@@ -61600,6 +62042,7 @@ export const ViewPreferencesValuesFragmentDoc = {
           { kind: "Field", name: { kind: "Name", value: "__typename" } },
           { kind: "Field", name: { kind: "Name", value: "issueGrouping" } },
           { kind: "Field", name: { kind: "Name", value: "viewOrdering" } },
+          { kind: "Field", name: { kind: "Name", value: "issueSubGrouping" } },
           { kind: "Field", name: { kind: "Name", value: "showCompletedIssues" } },
         ],
       },
@@ -92964,6 +93407,44 @@ export const AirbyteIntegrationConnectDocument = {
     ...IntegrationPayloadFragmentDoc.definitions,
   ],
 } as unknown as DocumentNode<AirbyteIntegrationConnectMutation, AirbyteIntegrationConnectMutationVariables>;
+export const AsksWebFormsAuthDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "asksWebFormsAuth" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "token" } },
+          type: { kind: "NonNullType", type: { kind: "NamedType", name: { kind: "Name", value: "String" } } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "asksWebFormsAuth" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "token" },
+                value: { kind: "Variable", name: { kind: "Name", value: "token" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [{ kind: "FragmentSpread", name: { kind: "Name", value: "AsksWebFormsAuthResponse" } }],
+            },
+          },
+        ],
+      },
+    },
+    ...AsksWebFormsAuthResponseFragmentDoc.definitions,
+  ],
+} as unknown as DocumentNode<AsksWebFormsAuthMutation, AsksWebFormsAuthMutationVariables>;
 export const CreateAttachmentDocument = {
   kind: "Document",
   definitions: [

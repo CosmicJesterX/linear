@@ -510,6 +510,7 @@ export class AgentSession extends Request {
     this.dismissedAt = parseDate(data.dismissedAt) ?? undefined;
     this.endedAt = parseDate(data.endedAt) ?? undefined;
     this.externalLink = data.externalLink ?? undefined;
+    this.externalUrls = parseJson(data.externalUrls) ?? {};
     this.id = data.id;
     this.plan = parseJson(data.plan) ?? undefined;
     this.sourceMetadata = parseJson(data.sourceMetadata) ?? undefined;
@@ -536,6 +537,8 @@ export class AgentSession extends Request {
   public endedAt?: Date;
   /** The URL of an external agent-hosted page associated with this session. */
   public externalLink?: string;
+  /** URLs of external resources associated with this session. */
+  public externalUrls: Record<string, unknown>;
   /** The unique identifier of the entity. */
   public id: string;
   /** A dynamically updated list of the agent's execution strategy. */
@@ -645,7 +648,10 @@ export class AgentSessionEventWebhookPayload {
     this.createdAt = parseDate(data.createdAt) ?? new Date();
     this.oauthClientId = data.oauthClientId;
     this.organizationId = data.organizationId;
+    this.promptContext = data.promptContext ?? undefined;
     this.type = data.type;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
     this.agentActivity = data.agentActivity ? new AgentActivityWebhookPayload(data.agentActivity) : undefined;
     this.agentSession = new AgentSessionWebhookPayload(data.agentSession);
     this.guidance = data.guidance ? data.guidance.map(node => new GuidanceRuleWebhookPayload(node)) : undefined;
@@ -664,8 +670,14 @@ export class AgentSessionEventWebhookPayload {
   public oauthClientId: string;
   /** ID of the organization for which the webhook belongs to. */
   public organizationId: string;
+  /** A formatted prompt string containing the relevant context for the agent session, including issue details, comments, and guidance. Present only for `created` events. */
+  public promptContext?: string;
   /** The type of resource. */
   public type: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
   /** Guidance to inform the agent's behavior, which comes from configuration at the level of the workspace, parent teams, and/or current team for this session. The nearest team-specific guidance should take highest precendence. */
   public guidance?: GuidanceRuleWebhookPayload[];
   /** The previous comments in the thread before this agent was mentioned and the session was initiated, if any. Present only for `created` events where the session was initiated by mentioning the agent in a child comment of a thread. */
@@ -702,6 +714,67 @@ export class AgentSessionPayload extends Request {
   /** The ID of agent session that was created or updated. */
   public get agentSessionId(): string | undefined {
     return this._agentSession?.id;
+  }
+}
+/**
+ * Join table between agent sessions and pull requests.
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.AgentSessionToPullRequestFragment response data
+ */
+export class AgentSessionToPullRequest extends Request {
+  private _agentSession: L.AgentSessionToPullRequestFragment["agentSession"];
+
+  public constructor(request: LinearRequest, data: L.AgentSessionToPullRequestFragment) {
+    super(request);
+    this.archivedAt = parseDate(data.archivedAt) ?? undefined;
+    this.createdAt = parseDate(data.createdAt) ?? new Date();
+    this.id = data.id;
+    this.updatedAt = parseDate(data.updatedAt) ?? new Date();
+    this._agentSession = data.agentSession;
+  }
+
+  /** The time at which the entity was archived. Null if the entity has not been archived. */
+  public archivedAt?: Date;
+  /** The time at which the entity was created. */
+  public createdAt: Date;
+  /** The unique identifier of the entity. */
+  public id: string;
+  /**
+   * The last time at which the entity was meaningfully updated. This is the same as the creation time if the entity hasn't
+   *     been updated after creation.
+   */
+  public updatedAt: Date;
+  /** The agent session that the pull request is associated with. */
+  public get agentSession(): LinearFetch<AgentSession> | undefined {
+    return new AgentSessionQuery(this._request).fetch(this._agentSession.id);
+  }
+  /** The ID of agent session that the pull request is associated with. */
+  public get agentSessionId(): string | undefined {
+    return this._agentSession?.id;
+  }
+}
+/**
+ * AgentSessionToPullRequestConnection model
+ *
+ * @param request - function to call the graphql client
+ * @param fetch - function to trigger a refetch of this AgentSessionToPullRequestConnection model
+ * @param data - AgentSessionToPullRequestConnection response data
+ */
+export class AgentSessionToPullRequestConnection extends Connection<AgentSessionToPullRequest> {
+  public constructor(
+    request: LinearRequest,
+    fetch: (
+      connection?: LinearConnectionVariables
+    ) => LinearFetch<LinearConnection<AgentSessionToPullRequest> | undefined>,
+    data: L.AgentSessionToPullRequestConnectionFragment
+  ) {
+    super(
+      request,
+      fetch,
+      data.nodes.map(node => new AgentSessionToPullRequest(request, node)),
+      new PageInfo(request, data.pageInfo)
+    );
   }
 }
 /**
@@ -822,6 +895,8 @@ export class AppUserNotificationWebhookPayload {
     this.oauthClientId = data.oauthClientId;
     this.organizationId = data.organizationId;
     this.type = data.type;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
   }
 
   /** The type of action that triggered the webhook. */
@@ -836,6 +911,10 @@ export class AppUserNotificationWebhookPayload {
   public organizationId: string;
   /** The type of resource. */
   public type: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
 }
 /**
  * Payload for app user team access change webhook events.
@@ -853,6 +932,8 @@ export class AppUserTeamAccessChangedWebhookPayload {
     this.organizationId = data.organizationId;
     this.removedTeamIds = data.removedTeamIds;
     this.type = data.type;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
   }
 
   /** The type of action that triggered the webhook. */
@@ -873,6 +954,10 @@ export class AppUserTeamAccessChangedWebhookPayload {
   public removedTeamIds: string[];
   /** The type of resource. */
   public type: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
 }
 /**
  * Public information of the OAuth application.
@@ -983,6 +1068,24 @@ export class AsksChannelConnectPayload extends Request {
   public get integrationId(): string | undefined {
     return this._integration?.id;
   }
+}
+/**
+ * AsksWebFormsAuthResponse model
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.AsksWebFormsAuthResponseFragment response data
+ */
+export class AsksWebFormsAuthResponse extends Request {
+  public constructor(request: LinearRequest, data: L.AsksWebFormsAuthResponseFragment) {
+    super(request);
+    this.email = data.email;
+    this.name = data.name;
+  }
+
+  /** User email. */
+  public email: string;
+  /** User display name. */
+  public name: string;
 }
 /**
  * Issue attachment (e.g. support ticket, pull request).
@@ -1616,12 +1719,18 @@ export class BaseWebhookPayload {
   public constructor(data: L.BaseWebhookPayloadFragment) {
     this.createdAt = parseDate(data.createdAt) ?? new Date();
     this.organizationId = data.organizationId;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
   }
 
   /** The time the payload was created. */
   public createdAt: Date;
   /** ID of the organization for which the webhook belongs to. */
   public organizationId: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
 }
 /**
  * A comment associated with an issue.
@@ -2032,6 +2141,8 @@ export class CustomResourceWebhookPayload {
     this.createdAt = parseDate(data.createdAt) ?? new Date();
     this.organizationId = data.organizationId;
     this.type = data.type;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
   }
 
   /** The type of action that triggered the webhook. */
@@ -2042,6 +2153,10 @@ export class CustomResourceWebhookPayload {
   public organizationId: string;
   /** The type of resource. */
   public type: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
 }
 /**
  * A custom view that has been saved by a user.
@@ -5355,6 +5470,8 @@ export class EntityWebhookPayload {
     this.type = data.type;
     this.updatedFrom = data.updatedFrom ?? undefined;
     this.url = data.url ?? undefined;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
   }
 
   /** The type of action that triggered the webhook. */
@@ -5369,6 +5486,10 @@ export class EntityWebhookPayload {
   public updatedFrom?: L.Scalars["JSONObject"];
   /** URL for the entity. */
   public url?: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
 }
 /**
  * Information about an external entity.
@@ -10249,6 +10370,8 @@ export class IssueSlaWebhookPayload {
     this.organizationId = data.organizationId;
     this.type = data.type;
     this.url = data.url ?? undefined;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
     this.issueData = new IssueWebhookPayload(data.issueData);
   }
 
@@ -10262,6 +10385,10 @@ export class IssueSlaWebhookPayload {
   public type: string;
   /** URL for the issue. */
   public url?: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
   /** The issue that the SLA event is about. */
   public issueData: IssueWebhookPayload;
 }
@@ -11587,6 +11714,8 @@ export class OAuthAppWebhookPayload {
     this.oauthClientId = data.oauthClientId;
     this.organizationId = data.organizationId;
     this.type = data.type;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
   }
 
   /** The type of action that triggered the webhook. */
@@ -11599,6 +11728,10 @@ export class OAuthAppWebhookPayload {
   public organizationId: string;
   /** The type of resource. */
   public type: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
 }
 /**
  * Payload for OAuth authorization webhook events.
@@ -11614,6 +11747,8 @@ export class OAuthAuthorizationWebhookPayload {
     this.organizationId = data.organizationId;
     this.type = data.type;
     this.userId = data.userId;
+    this.webhookId = data.webhookId;
+    this.webhookTimestamp = data.webhookTimestamp;
     this.oauthClient = new OauthClientChildWebhookPayload(data.oauthClient);
     this.user = new UserChildWebhookPayload(data.user);
   }
@@ -11632,6 +11767,10 @@ export class OAuthAuthorizationWebhookPayload {
   public type: string;
   /** ID of the user that the authorization belongs to. */
   public userId: string;
+  /** The ID of the webhook that sent this event. */
+  public webhookId: string;
+  /** Unix timestamp in milliseconds when the webhook was sent. */
+  public webhookTimestamp: number;
   /** Details of the OAuth client the authorization belongs to. */
   public oauthClient: OauthClientChildWebhookPayload;
   /** Details of the user that the authorization belongs to. */
@@ -18155,12 +18294,15 @@ export class ViewPreferencesValues extends Request {
   public constructor(request: LinearRequest, data: L.ViewPreferencesValuesFragment) {
     super(request);
     this.issueGrouping = data.issueGrouping ?? undefined;
+    this.issueSubGrouping = data.issueSubGrouping ?? undefined;
     this.showCompletedIssues = data.showCompletedIssues ?? undefined;
     this.viewOrdering = data.viewOrdering ?? undefined;
   }
 
   /** The issue grouping. */
   public issueGrouping?: string;
+  /** The issue sub grouping. */
+  public issueSubGrouping?: string;
   /** Whether to show completed issues. */
   public showCompletedIssues?: string;
   /** The issue ordering. */
@@ -22549,6 +22691,35 @@ export class AirbyteIntegrationConnectMutation extends Request {
     const data = response.airbyteIntegrationConnect;
 
     return new IntegrationPayload(this._request, data);
+  }
+}
+
+/**
+ * A fetchable AsksWebFormsAuth Mutation
+ *
+ * @param request - function to call the graphql client
+ */
+export class AsksWebFormsAuthMutation extends Request {
+  public constructor(request: LinearRequest) {
+    super(request);
+  }
+
+  /**
+   * Call the AsksWebFormsAuth mutation and return a AsksWebFormsAuthResponse
+   *
+   * @param token - required token to pass to asksWebFormsAuth
+   * @returns parsed response from AsksWebFormsAuthMutation
+   */
+  public async fetch(token: string): LinearFetch<AsksWebFormsAuthResponse> {
+    const response = await this._request<L.AsksWebFormsAuthMutation, L.AsksWebFormsAuthMutationVariables>(
+      L.AsksWebFormsAuthDocument,
+      {
+        token,
+      }
+    );
+    const data = response.asksWebFormsAuth;
+
+    return new AsksWebFormsAuthResponse(this._request, data);
   }
 }
 
@@ -39091,6 +39262,15 @@ export class LinearSdk extends Request {
     return new AirbyteIntegrationConnectMutation(this._request).fetch(input);
   }
   /**
+   * Authenticate a user to the Asks web forms app.
+   *
+   * @param token - required token to pass to asksWebFormsAuth
+   * @returns AsksWebFormsAuthResponse
+   */
+  public asksWebFormsAuth(token: string): LinearFetch<AsksWebFormsAuthResponse> {
+    return new AsksWebFormsAuthMutation(this._request).fetch(token);
+  }
+  /**
    * Creates a new attachment, or updates existing if the same `url` and `issueId` is used.
    *
    * @param input - required input to pass to createAttachment
@@ -42069,6 +42249,7 @@ export {
   PullRequestStatus,
   PushSubscriptionType,
   ReleaseChannel,
+  ReleasePipelineType,
   ReleaseStageType,
   SLADayCountType,
   SemanticSearchResultType,
