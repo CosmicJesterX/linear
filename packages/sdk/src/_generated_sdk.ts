@@ -506,6 +506,7 @@ export class AgentSession extends Request {
   public constructor(request: LinearRequest, data: L.AgentSessionFragment) {
     super(request);
     this.archivedAt = parseDate(data.archivedAt) ?? undefined;
+    this.context = parseJson(data.context) ?? {};
     this.createdAt = parseDate(data.createdAt) ?? new Date();
     this.dismissedAt = parseDate(data.dismissedAt) ?? undefined;
     this.endedAt = parseDate(data.endedAt) ?? undefined;
@@ -518,7 +519,7 @@ export class AgentSession extends Request {
     this.summary = data.summary ?? undefined;
     this.updatedAt = parseDate(data.updatedAt) ?? new Date();
     this.status = data.status;
-    this.type = data.type;
+    this.type = data.type ?? undefined;
     this._appUser = data.appUser;
     this._comment = data.comment ?? undefined;
     this._creator = data.creator ?? undefined;
@@ -529,6 +530,8 @@ export class AgentSession extends Request {
 
   /** The time at which the entity was archived. Null if the entity has not been archived. */
   public archivedAt?: Date;
+  /** Serialized JSON representing the contexts this session is related to, for direct chat sessions. */
+  public context: Record<string, unknown>;
   /** The time at which the entity was created. */
   public createdAt: Date;
   /** The time the agent session was dismissed. */
@@ -556,8 +559,8 @@ export class AgentSession extends Request {
   public updatedAt: Date;
   /** The current status of the agent session. */
   public status: L.AgentSessionStatus;
-  /** The type of the agent session. */
-  public type: L.AgentSessionType;
+  /** [DEPRECATED] The type of the agent session. */
+  public type?: L.AgentSessionType;
   /** The agent user that is associated with this agent session. */
   public get appUser(): LinearFetch<User> | undefined {
     return new UserQuery(this._request).fetch(this._appUser.id);
@@ -13073,6 +13076,10 @@ export class Project extends Request {
   /** History entries associated with the project. */
   public history(variables?: Omit<L.Project_HistoryQueryVariables, "id">) {
     return new Project_HistoryQuery(this._request, this.id, variables).fetch(variables);
+  }
+  /** Associations of this project to parent initiatives. */
+  public initiativeToProjects(variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">) {
+    return new Project_InitiativeToProjectsQuery(this._request, this.id, variables).fetch(variables);
   }
   /** Initiatives that this project belongs to. */
   public initiatives(variables?: Omit<L.Project_InitiativesQueryVariables, "id">) {
@@ -35105,6 +35112,61 @@ export class Project_HistoryQuery extends Request {
     const data = response.project.history;
 
     return new ProjectHistoryConnection(
+      this._request,
+      connection =>
+        this.fetch(
+          defaultConnection({
+            ...this._variables,
+            ...variables,
+            ...connection,
+          })
+        ),
+      data
+    );
+  }
+}
+
+/**
+ * A fetchable Project_InitiativeToProjects Query
+ *
+ * @param request - function to call the graphql client
+ * @param id - required id to pass to project
+ * @param variables - variables without 'id' to pass into the Project_InitiativeToProjectsQuery
+ */
+export class Project_InitiativeToProjectsQuery extends Request {
+  private _id: string;
+  private _variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">;
+
+  public constructor(
+    request: LinearRequest,
+    id: string,
+    variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">
+  ) {
+    super(request);
+    this._id = id;
+    this._variables = variables;
+  }
+
+  /**
+   * Call the Project_InitiativeToProjects query and return a InitiativeToProjectConnection
+   *
+   * @param variables - variables without 'id' to pass into the Project_InitiativeToProjectsQuery
+   * @returns parsed response from Project_InitiativeToProjectsQuery
+   */
+  public async fetch(
+    variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">
+  ): LinearFetch<InitiativeToProjectConnection> {
+    const response = await this._request<
+      L.Project_InitiativeToProjectsQuery,
+      L.Project_InitiativeToProjectsQueryVariables
+    >(L.Project_InitiativeToProjectsDocument, {
+      id: this._id,
+      ...this._variables,
+      ...variables,
+    });
+    const data = response.project.initiativeToProjects;
+
+    return new InitiativeToProjectConnection(
       this._request,
       connection =>
         this.fetch(
