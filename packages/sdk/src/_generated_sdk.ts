@@ -465,7 +465,7 @@ export class AgentActivityWebhookPayload {
     this.signalMetadata = data.signalMetadata ?? undefined;
     this.sourceCommentId = data.sourceCommentId ?? undefined;
     this.updatedAt = data.updatedAt;
-    this.userId = data.userId ?? undefined;
+    this.userId = data.userId;
   }
 
   /** The ID of the agent session that this activity belongs to. */
@@ -487,7 +487,7 @@ export class AgentActivityWebhookPayload {
   /** The time at which the entity was updated. */
   public updatedAt: string;
   /** The ID of the user who created this agent activity. */
-  public userId?: string;
+  public userId: string;
 }
 /**
  * A session for agent activities and state management.
@@ -506,6 +506,7 @@ export class AgentSession extends Request {
   public constructor(request: LinearRequest, data: L.AgentSessionFragment) {
     super(request);
     this.archivedAt = parseDate(data.archivedAt) ?? undefined;
+    this.context = parseJson(data.context) ?? {};
     this.createdAt = parseDate(data.createdAt) ?? new Date();
     this.dismissedAt = parseDate(data.dismissedAt) ?? undefined;
     this.endedAt = parseDate(data.endedAt) ?? undefined;
@@ -517,8 +518,9 @@ export class AgentSession extends Request {
     this.startedAt = parseDate(data.startedAt) ?? undefined;
     this.summary = data.summary ?? undefined;
     this.updatedAt = parseDate(data.updatedAt) ?? new Date();
+    this.url = data.url ?? undefined;
     this.status = data.status;
-    this.type = data.type;
+    this.type = data.type ?? undefined;
     this._appUser = data.appUser;
     this._comment = data.comment ?? undefined;
     this._creator = data.creator ?? undefined;
@@ -529,6 +531,8 @@ export class AgentSession extends Request {
 
   /** The time at which the entity was archived. Null if the entity has not been archived. */
   public archivedAt?: Date;
+  /** Serialized JSON representing the contexts this session is related to, for direct chat sessions. */
+  public context: Record<string, unknown>;
   /** The time at which the entity was created. */
   public createdAt: Date;
   /** The time the agent session was dismissed. */
@@ -554,10 +558,12 @@ export class AgentSession extends Request {
    *     been updated after creation.
    */
   public updatedAt: Date;
+  /** Agent session URL. */
+  public url?: string;
   /** The current status of the agent session. */
   public status: L.AgentSessionStatus;
-  /** The type of the agent session. */
-  public type: L.AgentSessionType;
+  /** [DEPRECATED] The type of the agent session. */
+  public type?: L.AgentSessionType;
   /** The agent user that is associated with this agent session. */
   public get appUser(): LinearFetch<User> | undefined {
     return new UserQuery(this._request).fetch(this._appUser.id);
@@ -800,6 +806,7 @@ export class AgentSessionWebhookPayload {
     this.summary = data.summary ?? undefined;
     this.type = data.type;
     this.updatedAt = data.updatedAt;
+    this.url = data.url ?? undefined;
     this.comment = data.comment ? new CommentChildWebhookPayload(data.comment) : undefined;
     this.creator = data.creator ? new UserChildWebhookPayload(data.creator) : undefined;
     this.issue = data.issue ? new IssueWithDescriptionChildWebhookPayload(data.issue) : undefined;
@@ -837,6 +844,8 @@ export class AgentSessionWebhookPayload {
   public type: string;
   /** The time at which the entity was updated. */
   public updatedAt: string;
+  /** The URL of the agent session. */
+  public url?: string;
   /** The root comment of the thread this agent session is attached to. */
   public comment?: CommentChildWebhookPayload;
   /** The human user responsible for the agent session. Unset if the session was initiated via automation or by an agent user, with no responsible human user. */
@@ -1068,24 +1077,6 @@ export class AsksChannelConnectPayload extends Request {
   public get integrationId(): string | undefined {
     return this._integration?.id;
   }
-}
-/**
- * AsksWebFormsAuthResponse model
- *
- * @param request - function to call the graphql client
- * @param data - L.AsksWebFormsAuthResponseFragment response data
- */
-export class AsksWebFormsAuthResponse extends Request {
-  public constructor(request: LinearRequest, data: L.AsksWebFormsAuthResponseFragment) {
-    super(request);
-    this.email = data.email;
-    this.name = data.name;
-  }
-
-  /** User email. */
-  public email: string;
-  /** User display name. */
-  public name: string;
 }
 /**
  * Issue attachment (e.g. support ticket, pull request).
@@ -13074,6 +13065,10 @@ export class Project extends Request {
   public history(variables?: Omit<L.Project_HistoryQueryVariables, "id">) {
     return new Project_HistoryQuery(this._request, this.id, variables).fetch(variables);
   }
+  /** Associations of this project to parent initiatives. */
+  public initiativeToProjects(variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">) {
+    return new Project_InitiativeToProjectsQuery(this._request, this.id, variables).fetch(variables);
+  }
   /** Initiatives that this project belongs to. */
   public initiatives(variables?: Omit<L.Project_InitiativesQueryVariables, "id">) {
     return new Project_InitiativesQuery(this._request, this.id, variables).fetch(variables);
@@ -18382,6 +18377,10 @@ export class Webhook extends Request {
   public delete() {
     return new DeleteWebhookMutation(this._request).fetch(this.id);
   }
+  /** Rotates the signing secret for a Webhook. */
+  public rotateSecret() {
+    return new RotateSecretWebhookMutation(this._request).fetch(this.id);
+  }
   /** Updates an existing Webhook. */
   public update(input: L.WebhookUpdateInput) {
     return new UpdateWebhookMutation(this._request).fetch(this.id, input);
@@ -18477,6 +18476,27 @@ export class WebhookPayload extends Request {
   public get webhookId(): string | undefined {
     return this._webhook?.id;
   }
+}
+/**
+ * WebhookRotateSecretPayload model
+ *
+ * @param request - function to call the graphql client
+ * @param data - L.WebhookRotateSecretPayloadFragment response data
+ */
+export class WebhookRotateSecretPayload extends Request {
+  public constructor(request: LinearRequest, data: L.WebhookRotateSecretPayloadFragment) {
+    super(request);
+    this.lastSyncId = data.lastSyncId;
+    this.secret = data.secret;
+    this.success = data.success;
+  }
+
+  /** The identifier of the last sync operation. */
+  public lastSyncId: number;
+  /** The new webhook signing secret. */
+  public secret: string;
+  /** Whether the operation was successful. */
+  public success: boolean;
 }
 /**
  * A state in a team workflow.
@@ -22691,35 +22711,6 @@ export class AirbyteIntegrationConnectMutation extends Request {
     const data = response.airbyteIntegrationConnect;
 
     return new IntegrationPayload(this._request, data);
-  }
-}
-
-/**
- * A fetchable AsksWebFormsAuth Mutation
- *
- * @param request - function to call the graphql client
- */
-export class AsksWebFormsAuthMutation extends Request {
-  public constructor(request: LinearRequest) {
-    super(request);
-  }
-
-  /**
-   * Call the AsksWebFormsAuth mutation and return a AsksWebFormsAuthResponse
-   *
-   * @param token - required token to pass to asksWebFormsAuth
-   * @returns parsed response from AsksWebFormsAuthMutation
-   */
-  public async fetch(token: string): LinearFetch<AsksWebFormsAuthResponse> {
-    const response = await this._request<L.AsksWebFormsAuthMutation, L.AsksWebFormsAuthMutationVariables>(
-      L.AsksWebFormsAuthDocument,
-      {
-        token,
-      }
-    );
-    const data = response.asksWebFormsAuth;
-
-    return new AsksWebFormsAuthResponse(this._request, data);
   }
 }
 
@@ -31067,6 +31058,35 @@ export class DeleteWebhookMutation extends Request {
 }
 
 /**
+ * A fetchable RotateSecretWebhook Mutation
+ *
+ * @param request - function to call the graphql client
+ */
+export class RotateSecretWebhookMutation extends Request {
+  public constructor(request: LinearRequest) {
+    super(request);
+  }
+
+  /**
+   * Call the RotateSecretWebhook mutation and return a WebhookRotateSecretPayload
+   *
+   * @param id - required id to pass to rotateSecretWebhook
+   * @returns parsed response from RotateSecretWebhookMutation
+   */
+  public async fetch(id: string): LinearFetch<WebhookRotateSecretPayload> {
+    const response = await this._request<L.RotateSecretWebhookMutation, L.RotateSecretWebhookMutationVariables>(
+      L.RotateSecretWebhookDocument,
+      {
+        id,
+      }
+    );
+    const data = response.webhookRotateSecret;
+
+    return new WebhookRotateSecretPayload(this._request, data);
+  }
+}
+
+/**
  * A fetchable UpdateWebhook Mutation
  *
  * @param request - function to call the graphql client
@@ -35105,6 +35125,61 @@ export class Project_HistoryQuery extends Request {
     const data = response.project.history;
 
     return new ProjectHistoryConnection(
+      this._request,
+      connection =>
+        this.fetch(
+          defaultConnection({
+            ...this._variables,
+            ...variables,
+            ...connection,
+          })
+        ),
+      data
+    );
+  }
+}
+
+/**
+ * A fetchable Project_InitiativeToProjects Query
+ *
+ * @param request - function to call the graphql client
+ * @param id - required id to pass to project
+ * @param variables - variables without 'id' to pass into the Project_InitiativeToProjectsQuery
+ */
+export class Project_InitiativeToProjectsQuery extends Request {
+  private _id: string;
+  private _variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">;
+
+  public constructor(
+    request: LinearRequest,
+    id: string,
+    variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">
+  ) {
+    super(request);
+    this._id = id;
+    this._variables = variables;
+  }
+
+  /**
+   * Call the Project_InitiativeToProjects query and return a InitiativeToProjectConnection
+   *
+   * @param variables - variables without 'id' to pass into the Project_InitiativeToProjectsQuery
+   * @returns parsed response from Project_InitiativeToProjectsQuery
+   */
+  public async fetch(
+    variables?: Omit<L.Project_InitiativeToProjectsQueryVariables, "id">
+  ): LinearFetch<InitiativeToProjectConnection> {
+    const response = await this._request<
+      L.Project_InitiativeToProjectsQuery,
+      L.Project_InitiativeToProjectsQueryVariables
+    >(L.Project_InitiativeToProjectsDocument, {
+      id: this._id,
+      ...this._variables,
+      ...variables,
+    });
+    const data = response.project.initiativeToProjects;
+
+    return new InitiativeToProjectConnection(
       this._request,
       connection =>
         this.fetch(
@@ -39262,15 +39337,6 @@ export class LinearSdk extends Request {
     return new AirbyteIntegrationConnectMutation(this._request).fetch(input);
   }
   /**
-   * Authenticate a user to the Asks web forms app.
-   *
-   * @param token - required token to pass to asksWebFormsAuth
-   * @returns AsksWebFormsAuthResponse
-   */
-  public asksWebFormsAuth(token: string): LinearFetch<AsksWebFormsAuthResponse> {
-    return new AsksWebFormsAuthMutation(this._request).fetch(token);
-  }
-  /**
    * Creates a new attachment, or updates existing if the same `url` and `issueId` is used.
    *
    * @param input - required input to pass to createAttachment
@@ -42162,6 +42228,15 @@ export class LinearSdk extends Request {
     return new DeleteWebhookMutation(this._request).fetch(id);
   }
   /**
+   * Rotates the signing secret for a Webhook.
+   *
+   * @param id - required id to pass to rotateSecretWebhook
+   * @returns WebhookRotateSecretPayload
+   */
+  public rotateSecretWebhook(id: string): LinearFetch<WebhookRotateSecretPayload> {
+    return new RotateSecretWebhookMutation(this._request).fetch(id);
+  }
+  /**
    * Updates an existing Webhook.
    *
    * @param id - required id to pass to updateWebhook
@@ -42256,6 +42331,7 @@ export {
   SendStrategy,
   SlaStatus,
   SlackChannelType,
+  TeamRetirementSubTeamHandling,
   TeamRoleType,
   TriageResponsibilityAction,
   UserContextViewType,
