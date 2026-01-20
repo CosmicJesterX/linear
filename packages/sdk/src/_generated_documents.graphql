@@ -2176,8 +2176,12 @@ fragment AgentSession on AgentSession {
   plan
   # A summary of the activities in this session.
   summary
+  # Agent session URL.
+  url
   # Metadata about the external source that created this agent session.
   sourceMetadata
+  # Serialized JSON representing the contexts this session is related to, for direct chat sessions.
+  context
   # The URL of an external agent-hosted page associated with this session.
   externalLink
   # The agent user that is associated with this agent session.
@@ -2215,8 +2219,6 @@ fragment AgentSession on AgentSession {
   startedAt
   # The time the agent session was dismissed.
   dismissedAt
-  # The type of the agent session.
-  type
   # The unique identifier of the entity.
   id
   # The user who dismissed the agent session.
@@ -2225,6 +2227,8 @@ fragment AgentSession on AgentSession {
   }
   # URLs of external resources associated with this session.
   externalUrls
+  # [DEPRECATED] The type of the agent session.
+  type
 }
 
 # A set of issues to be resolved in a specified amount of time.
@@ -5804,6 +5808,8 @@ fragment AgentSessionWebhookPayload on AgentSessionWebhookPayload {
   organizationId
   # The ID of the root comment of the thread this agent session is attached to.
   commentId
+  # The URL of the agent session.
+  url
   # The current status of the agent session.
   status
   # The human user responsible for the agent session. Unset if the session was initiated via automation or by an agent user, with no responsible human user.
@@ -7186,14 +7192,6 @@ fragment AsksChannelConnectPayload on AsksChannelConnectPayload {
   addBot
   # Whether the operation was successful.
   success
-}
-
-fragment AsksWebFormsAuthResponse on AsksWebFormsAuthResponse {
-  __typename
-  # User display name.
-  name
-  # User email.
-  email
 }
 
 fragment AttachmentConnection on AttachmentConnection {
@@ -9404,6 +9402,16 @@ fragment WebhookPayload on WebhookPayload {
   webhook {
     id
   }
+  # Whether the operation was successful.
+  success
+}
+
+fragment WebhookRotateSecretPayload on WebhookRotateSecretPayload {
+  __typename
+  # The identifier of the last sync operation.
+  lastSyncId
+  # The new webhook signing secret.
+  secret
   # Whether the operation was successful.
   success
 }
@@ -12944,6 +12952,35 @@ query project_history(
     }
   }
 }
+# Associations of this project to parent initiatives.
+query project_initiativeToProjects(
+  $id: String!
+  # A cursor to be used with first for forward pagination
+  $after: String
+  # A cursor to be used with last for backward pagination.
+  $before: String
+  # The number of items to forward paginate (used with after). Defaults to 50.
+  $first: Int
+  # Should archived resources be included (default: false)
+  $includeArchived: Boolean
+  # The number of items to backward paginate (used with before). Defaults to 50.
+  $last: Int
+  # By which field should the pagination order by. Available options are createdAt (default) and updatedAt.
+  $orderBy: PaginationOrderBy
+) {
+  project(id: $id) {
+    initiativeToProjects(
+      after: $after
+      before: $before
+      first: $first
+      includeArchived: $includeArchived
+      last: $last
+      orderBy: $orderBy
+    ) {
+      ...InitiativeToProjectConnection
+    }
+  }
+}
 # Initiatives that this project belongs to.
 query project_initiatives(
   $id: String!
@@ -15419,15 +15456,6 @@ mutation airbyteIntegrationConnect(
     ...IntegrationPayload
   }
 }
-# Authenticate a user to the Asks web forms app.
-mutation asksWebFormsAuth(
-  # The magic login code.
-  $token: String!
-) {
-  asksWebFormsAuth(token: $token) {
-    ...AsksWebFormsAuthResponse
-  }
-}
 # Creates a new attachment, or updates existing if the same `url` and `issueId` is used.
 mutation createAttachment(
   # The attachment object to create.
@@ -15456,7 +15484,7 @@ mutation attachmentLinkDiscord(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the Discord message.
+  # The issue for which to link the Discord message. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The Discord message ID for the message to link.
   $messageId: String!
@@ -15488,7 +15516,7 @@ mutation attachmentLinkFront(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the Front conversation.
+  # The issue for which to link the Front conversation. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The title to use for the attachment.
   $title: String
@@ -15512,7 +15540,7 @@ mutation attachmentLinkGitHubIssue(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The Linear issue for which to link the GitHub issue.
+  # The Linear issue for which to link the GitHub issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The title to use for the attachment.
   $title: String
@@ -15538,7 +15566,7 @@ mutation attachmentLinkGitHubPR(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the GitHub pull request.
+  # The issue for which to link the GitHub pull request. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # [Internal] The kind of link between the issue and the pull request.
   $linkKind: GitLinkKind
@@ -15567,7 +15595,7 @@ mutation attachmentLinkGitLabMR(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the GitLab merge request.
+  # The issue for which to link the GitLab merge request. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The GitLab merge request number to link.
   $number: Float!
@@ -15601,7 +15629,7 @@ mutation attachmentLinkIntercom(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the Intercom conversation.
+  # The issue for which to link the Intercom conversation. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # An optional Intercom conversation part ID to link to
   $partId: String
@@ -15628,7 +15656,7 @@ mutation attachmentLinkJiraIssue(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the Jira issue.
+  # The issue for which to link the Jira issue. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The Jira issue key or ID to link.
   $jiraIssueId: String!
@@ -15657,7 +15685,7 @@ mutation attachmentLinkSalesforce(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the Salesforce case.
+  # The issue for which to link the Salesforce case. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The title to use for the attachment.
   $title: String
@@ -15683,7 +15711,7 @@ mutation attachmentLinkSlack(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue to which to link the Slack message.
+  # The issue to which to link the Slack message. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # Whether to begin syncing the message's Slack thread with a comment thread on the issue.
   $syncToCommentThread: Boolean
@@ -15712,7 +15740,7 @@ mutation attachmentLinkURL(
   $displayIconUrl: String
   # The id for the attachment.
   $id: String
-  # The issue for which to link the url.
+  # The issue for which to link the url. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The title to use for the attachment.
   $title: String
@@ -15738,7 +15766,7 @@ mutation attachmentLinkZendesk(
   $displayIconUrl: String
   # Optional attachment ID that may be provided through the API.
   $id: String
-  # The issue for which to link the Zendesk ticket.
+  # The issue for which to link the Zendesk ticket. Can be a UUID or issue identifier (e.g., 'LIN-123').
   $issueId: String!
   # The Zendesk ticket ID to link.
   $ticketId: String!
@@ -18446,6 +18474,15 @@ mutation deleteWebhook(
 ) {
   webhookDelete(id: $id) {
     ...DeletePayload
+  }
+}
+# Rotates the signing secret for a Webhook.
+mutation rotateSecretWebhook(
+  # The identifier of the Webhook to rotate the secret for.
+  $id: String!
+) {
+  webhookRotateSecret(id: $id) {
+    ...WebhookRotateSecretPayload
   }
 }
 # Updates an existing Webhook.
